@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+    <f:section title="${%Cache Plugin}">
+        <f:entry title="${%Username}" field="username" description="aka access-key">
+            <f:textbox />
+        </f:entry>
+
+        <f:entry title="${%Password}" field="password" description="aka secret-key">
+            <f:password />
+        </f:entry>
+
+        <f:entry title="${%Bucket}" field="bucket">
+            <f:textbox />
+        </f:entry>
+
+        <f:entry title="${%Region}" field="region">
+            <f:textbox default="us-east-1" />
+        </f:entry>
+
+        <f:entry title="${%Endpoint}" field="endpoint">
+            <f:textbox default="https://s3.amazonaws.com" />
+        </f:entry>
+    </f:section>
+</j:jelly>

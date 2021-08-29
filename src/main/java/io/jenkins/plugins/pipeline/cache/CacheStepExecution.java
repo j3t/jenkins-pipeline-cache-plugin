@@ -21,16 +21,18 @@ import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.model.TaskListener;
 
-public class StepExecution extends GeneralNonBlockingStepExecution {
+public class CacheStepExecution extends GeneralNonBlockingStepExecution {
+
+    private static final long serialVersionUID = 1L;
 
     private final transient Cache cache;
-    private final Step step;
+    private final CacheStep step;
 
-    public StepExecution(StepContext context, Step step) throws IOException, InterruptedException {
+    public CacheStepExecution(StepContext context, CacheStep step) throws IOException, InterruptedException {
         this(context, step, new Cache(Configuration.get(), context.get(TaskListener.class).getLogger()));
     }
 
-    public StepExecution(StepContext context, Step step, Cache cache) throws IOException, InterruptedException {
+    public CacheStepExecution(StepContext context, CacheStep step, Cache cache) {
         super(context);
         this.step = step;
         this.cache = cache;

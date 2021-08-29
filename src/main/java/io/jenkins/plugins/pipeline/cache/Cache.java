@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
@@ -30,8 +31,8 @@ public class Cache {
         this(config.getUsername(), config.getPassword(), config.getBucket(), config.getRegion(), config.getEndpoint(), logger);
     }
 
-    Cache(String accessKey, String secretKey, String bucket, String region, String endpoint) {
-        this(accessKey, secretKey, bucket, region, endpoint, new PrintStream(System.out));
+    Cache(String accessKey, String secretKey, String bucket, String region, String endpoint) throws UnsupportedEncodingException {
+        this(accessKey, secretKey, bucket, region, endpoint, new PrintStream(System.out, false, "UTF-8"));
     }
 
     Cache(String accessKey, String secretKey, String bucket, String region, String endpoint, PrintStream logger) {
@@ -59,8 +60,8 @@ public class Cache {
         }
 
         logger.println("Cache saved successfully");
-        logger.printf("Cache saved with key: %s\n", key);
-        logger.printf("Cache Size: %s B\n", s3.getObjectMetadata(bucket, key).getContentLength());
+        logger.printf("Cache saved with key: %s%n", key);
+        logger.printf("Cache Size: %s B%n", s3.getObjectMetadata(bucket, key).getContentLength());
     }
 
     /**
@@ -91,8 +92,8 @@ public class Cache {
         }
 
         logger.println("Cache restored successfully");
-        logger.printf("Cache restored from key: %s\n", key);
-        logger.printf("Cache Size: %s B\n", s3.getObjectMetadata(bucket, key).getContentLength());
+        logger.printf("Cache restored from key: %s%n", key);
+        logger.printf("Cache Size: %s B%n", s3.getObjectMetadata(bucket, key).getContentLength());
     }
 
     String findKey(String... restoreKeys) {

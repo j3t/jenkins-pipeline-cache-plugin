@@ -22,7 +22,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import hudson.EnvVars;
 
 @RunWith(MockitoJUnitRunner.class)
-public class StepExecutionTest {
+public class CacheStepExecutionTest {
 
     @Mock
     private StepContext stepContext;
@@ -47,9 +47,9 @@ public class StepExecutionTest {
     @Test
     public void testWithoutHash() throws IOException, InterruptedException {
         String key = UUID.randomUUID().toString();
-        Step step = new Step(folder.getRoot().getAbsolutePath(), key);
+        CacheStep step = new CacheStep(folder.getRoot().getAbsolutePath(), key);
 
-        String[] result = new StepExecution(stepContext, step, cache).createRestoreKeys();
+        String[] result = new CacheStepExecution(stepContext, step, cache).createRestoreKeys();
 
         assertThat(result.length, is(1));
         assertThat(result[0], is(key));
@@ -58,10 +58,10 @@ public class StepExecutionTest {
     @Test
     public void testWithHash() throws IOException, InterruptedException {
         String key = UUID.randomUUID().toString();
-        Step step = new Step(folder.getRoot().getAbsolutePath(), key);
+        CacheStep step = new CacheStep(folder.getRoot().getAbsolutePath(), key);
         step.setHashFiles("**/pom.xml");
 
-        String[] result = new StepExecution(stepContext, step, cache).createRestoreKeys();
+        String[] result = new CacheStepExecution(stepContext, step, cache).createRestoreKeys();
 
         assertThat(result.length, is(2));
         assertThat(result[0], is(key+"-9a0364b9e99bb480dd25e1f0284c8555"));

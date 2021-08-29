@@ -15,9 +15,8 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.SingleFileSCM;
 
-public class StepTest {
+public class CacheStepTest {
 
     @ClassRule
     public static MinioContainer minio = new MinioContainer();

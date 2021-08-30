@@ -122,6 +122,11 @@
             <name>GitHub Packages</name>
             <url>https://maven.pkg.github.com/j3t/jenkins-pipeline-cache-plugin</url>
         </repository>
+        <snapshotRepository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/j3t/jenkins-pipeline-cache-plugin</url>
+        </snapshotRepository>
     </distributionManagement>
 
     <repositories>

@@ -116,11 +116,13 @@
         </plugins>
     </build>
 
-    <scm>
-        <connection>scm:git:git://github.com/j3t/${project.artifactId}-plugin.git</connection>
-        <developerConnection>scm:git:git@github.com:j3t/${project.artifactId}-plugin.git</developerConnection>
-        <url>https://github.com/j3t/${project.artifactId}-plugin</url>
-    </scm>
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/j3t/jenkins-pipeline-cache-plugin</url>
+        </repository>
+    </distributionManagement>
 
     <repositories>
         <repository>

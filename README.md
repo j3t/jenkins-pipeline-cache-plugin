@@ -11,14 +11,14 @@ A cloud native file cache for Jenkins build pipelines which uses an S3-Bucket as
 The plugin restores a given folder before the cache step gets executed and creates a backup after the execution completed.
 
 You have the following configuration parameters:
-1. folder - path to the folder you want to cache
-1. key - identifier assigned to the backup
-1. hashFiles (optional) - a glob pattern which is used to hash files in the workspace and then used as identifier
+1. `folder` - path to the files you want to cache
+1. `key` - name to identify the cache
+1. `hashFiles` - (optional) hash of selected workspace files as additional identifier
 
 For example
 ```
 node {
-  cache folder: '$HOME/.m2/repository', key: 'my-project-maven', hashFiles: '**/pom.xml' {
+  cache (folder: '$HOME/.m2/repository', key: 'my-project-maven', hashFiles: '**/pom.xml') {
     // TODO: build project
   }
 }
@@ -45,5 +45,7 @@ Finished: SUCCESS
 ```
 In the example above, the key used to restore the folder was `bla-foo-9fc7ca5a922f2a37b84ec9dbc26a5168cee7e667` while the key used to back up the folder was `bla-foo-3cd7a0db76ff9dca48979e24c39b408c`. This is the case when no backup exists yet but another backup with same key is present. 
 
-# TODO
-* upload same key not again
+# Pitfalls
+* The plugin creates a tar archive of the folder and uploads the file to S3 with the given `key`.
+* The `hashFiles` option expects a `Glob-Pattern` to create a hash of selected workspace resources which is then appended to the `key`.
+* For the restore, the `key` (without hash) is used as fallback when no backup exists. Then the latest `key` with the same prefix is used instead. 

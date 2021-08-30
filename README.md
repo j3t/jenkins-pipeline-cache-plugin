@@ -1,3 +1,5 @@
+[![CI](https://github.com/j3t/jenkins-pipeline-cache-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/j3t/jenkins-pipeline-cache-plugin/actions/workflows/ci.yml)
+
 A cloud native file cache for Jenkins build pipelines which uses an S3-Bucket as storage provider.
 
 # Configuration

@@ -18,19 +18,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.level>8</java.level>
 
-        <!-- sonar settings -->
-        <sonar.projectKey>j3t_mvnio</sonar.projectKey>
-        <sonar.organization>jtlabs</sonar.organization>
-        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
-        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
-        <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
-        <sonar.language>java</sonar.language>
-
         <!-- dependency versions -->
         <jenkins.version>2.277.1</jenkins.version>
         <jacoco-maven-plugin.version>0.8.7</jacoco-maven-plugin.version>
-        <sonar-maven-plugin.version>3.9.0.2155</sonar-maven-plugin.version>
     </properties>
 
     <description>Provide a state of the art cache plugin for Jenkins pipelines.</description>
@@ -122,11 +112,6 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.sonarsource.scanner.maven</groupId>
-                <artifactId>sonar-maven-plugin</artifactId>
-                <version>${sonar-maven-plugin.version}</version>
             </plugin>
         </plugins>
     </build>

@@ -23,7 +23,8 @@
         <jacoco-maven-plugin.version>0.8.7</jacoco-maven-plugin.version>
     </properties>
 
-    <description>Provide a state of the art cache plugin for Jenkins pipelines.</description>
+    <name>Jenkins Pipeline Cache</name>
+    <description>A cloud native file cache for Jenkins build pipelines which uses an S3-Bucket as storage provider.</description>
     <url>https://github.com/j3t/${project.artifactId}-plugin</url>
 
     <dependencyManagement>

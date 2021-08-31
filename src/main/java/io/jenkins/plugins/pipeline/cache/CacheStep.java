@@ -8,13 +8,12 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.DataBoundSetter;
 
 import hudson.Extension;
 import hudson.model.TaskListener;
 
 /**
- * Provides a cache step which can be used in pipelines to backup/restore a folder. The step tries to restore a the last backup and when
+ * Provides a cache step which can be used in pipelines to backup and restore files. The step tries to restore a the last backup and when
  * the step is completed the folder is stored in S3. The given key is assigned to the backup in S3 and if the hashFiles parameter is
  * present then the matching files are hashed and this hash is appended to the key.<br>
  * <br>
@@ -28,12 +27,13 @@ public class CacheStep extends Step implements Serializable {
 
     private final String folder;
     private final String key;
-    private String hashFiles;
+    private final String hashFiles;
 
     @DataBoundConstructor
-    public CacheStep(String folder, String key) {
+    public CacheStep(String folder, String key, String hashFiles) {
         this.folder = folder;
         this.key = key;
+        this.hashFiles = hashFiles;
     }
 
     @Override
@@ -51,11 +51,6 @@ public class CacheStep extends Step implements Serializable {
 
     public String getHashFiles() {
         return hashFiles;
-    }
-
-    @DataBoundSetter
-    public void setHashFiles(String hashFiles) {
-        this.hashFiles = hashFiles;
     }
 
     @Extension

@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.AbortMultipartUploadRequest;
 import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.CompleteMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
@@ -160,13 +159,6 @@ public class S3OutputStream extends OutputStream {
                                 .withCannedAcl(CannedAccessControlList.BucketOwnerFullControl);
                 this.s3Client.putObject(request);
             }
-        }
-    }
-
-    public void cancel() {
-        this.open = false;
-        if (this.uploadId != null) {
-            this.s3Client.abortMultipartUpload(new AbortMultipartUploadRequest(this.bucket, this.path, this.uploadId));
         }
     }
 

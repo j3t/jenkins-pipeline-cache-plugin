@@ -55,6 +55,11 @@ public class Cache {
      * @throws InterruptedException see {@link FilePath#tar(OutputStream, String)}
      */
     public void backup(FilePath folder, String key) throws IOException, InterruptedException {
+        if (s3.doesObjectExist(bucket, key)) {
+            logger.printf("Cache already exists (%s), not saving cache.%n", key);
+            return;
+        }
+
         try (S3OutputStream out = new S3OutputStream(s3, bucket, key)) {
             folder.tar(out, "**/*");
         }

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.SequenceInputStream;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
@@ -38,15 +39,15 @@ public class CacheStepExecution extends GeneralNonBlockingStepExecution {
         this.cache = cache;
     }
 
-    private String createKeySuffix() throws IOException, InterruptedException {
-        if (step.getHashFiles() == null) {
-            return null;
-        }
-
+    /**
+     * Collects relevant workspace files (always in the same order, hopefully) and then teh hash of the content will be returned. The
+     * hash should be consistent as long as the relevant files are the same.
+     */
+    String createFileHash() throws IOException, InterruptedException {
         PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + step.getHashFiles());
-
-        Stream<FileInputStream> streams = Files.walk(Paths.get(getContext().get(EnvVars.class).get("WORKSPACE")))
-                .filter(path -> pathMatcher.matches(path))
+        Path workspace = Paths.get(getContext().get(EnvVars.class).get("WORKSPACE"));
+        Stream<FileInputStream> streams = Files.walk(workspace)
+                .filter(pathMatcher::matches)
                 .sorted()
                 .map(path -> {
                     try {
@@ -61,11 +62,11 @@ public class CacheStepExecution extends GeneralNonBlockingStepExecution {
         }
     }
 
-    String[] createRestoreKeys() throws IOException, InterruptedException {
+    private String[] createRestoreKeys() throws IOException, InterruptedException {
         String key = getContext().get(EnvVars.class).expand(step.getKey());
-        String keySuffix = createKeySuffix();
+        String hash = createFileHash();
 
-        return keySuffix == null ? new String[]{key} : new String[]{key + "-" + keySuffix, key};
+        return new String[]{key + "-" + hash, key};
     }
 
     @Override
@@ -73,8 +74,10 @@ public class CacheStepExecution extends GeneralNonBlockingStepExecution {
         FilePath folder = new FilePath(new File(step.getFolder()));
         String[] restoreKeys = createRestoreKeys();
 
+        // restore folder
         cache.restore(folder, restoreKeys);
 
+        // execute step and backup folder after completion
         getContext().newBodyInvoker().withCallback(new BodyExecutionCallback.TailCall() {
             @Override
             protected void finished(StepContext context) throws Exception {

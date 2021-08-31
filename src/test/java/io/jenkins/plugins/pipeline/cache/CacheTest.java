@@ -102,14 +102,14 @@ public class CacheTest {
     }
 
     @Test
-    public void testRestoreUnknownKey() throws IOException, InterruptedException {
+    public void testRestoreNewCache() throws IOException, InterruptedException {
         cache.restore(new FilePath(folderB.getRoot()), UUID.randomUUID().toString());
 
         assertThat(folderB.getRoot().list().length, is(0));
     }
 
     @Test
-    public void testRestoreFolderWhichNotExists() throws IOException, InterruptedException {
+    public void testRestoreNewFolder() throws IOException, InterruptedException {
         // GIVEN
         String key = UUID.randomUUID().toString();
         File file = folderA.newFile(RandomStringUtils.randomAlphanumeric(101));
@@ -123,7 +123,7 @@ public class CacheTest {
     }
 
     @Test
-    public void testKeyMatchesExactly() throws IOException, InterruptedException {
+    public void testFindByExactMatch() throws IOException, InterruptedException {
         // GIVEN
         mc.createObject(bucket, "prefix-1");
         mc.createObject(bucket, "prefix-2");
@@ -139,7 +139,7 @@ public class CacheTest {
     }
 
     @Test
-    public void testOneKeyWithTheSamePrefixExists() throws IOException, InterruptedException {
+    public void testFindByPrefix() throws IOException, InterruptedException {
         // GIVEN
         mc.createObject(bucket, "prefax-1");
         mc.createObject(bucket, "prefox-2");
@@ -155,7 +155,7 @@ public class CacheTest {
     }
 
     @Test
-    public void testMultipleKeysWithTheSamePrefixExist() throws IOException, InterruptedException {
+    public void testFindByPrefixLatestOne() throws IOException, InterruptedException {
         // GIVEN
         mc.createObject(bucket, "prefix-1");
         mc.createObject(bucket, "prefix-2");
@@ -171,7 +171,7 @@ public class CacheTest {
     }
 
     @Test
-    public void testNoKeyWithSamePrefixExists() throws IOException, InterruptedException {
+    public void testFindWithoutMatches() throws IOException, InterruptedException {
         // GIVEN
         mc.createObject(bucket, "prefax-1");
         mc.createObject(bucket, "prefex-2");
@@ -186,7 +186,7 @@ public class CacheTest {
     }
 
     @Test
-    public void testMultipleRestoreKeysMatches() throws IOException, InterruptedException {
+    public void testFindByOrder() throws IOException, InterruptedException {
         // GIVEN
         mc.createObject(bucket, "prefix-1");
         mc.createObject(bucket, "prefix-2");
@@ -207,7 +207,7 @@ public class CacheTest {
         mc.createObject(bucket, UUID.randomUUID().toString());
 
         // WHEN
-        String key = cache.findKey(null);
+        String key = cache.findKey((String[]) null);
 
         // THEN
         assertThat(key, nullValue());

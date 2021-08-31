@@ -2,6 +2,10 @@
 
 A cloud native file cache for Jenkins build pipelines which uses an S3-Bucket as storage provider.
 
+# Installation
+* Download the latest version (see [releases](https://github.com/j3t/jenkins-pipeline-cache-plugin/releases))
+* Complete the installation via `Manage Jenkins -> Manage Plugins -> Advanced -> Upload Plugin`
+
 # Configuration
 * Go to `Manage Jenkins -> Configure System -> Cache Plugin`
 * Update `Username` (aka S3-Access-Key), `Password` (aka S3-Secret-Key) and `Region`

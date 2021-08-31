@@ -31,6 +31,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: $(curl -sL https://api.github.com/repos/j3t/jenkins-pipeline-cache-plugin/releases/tags/$VERSION | jq .upload_url)
-          asset_path: target/jenkins-pipeline-cache.hpi
+          asset_path: ./target/jenkins-pipeline-cache.hpi
           asset_name: jenkins-pipeline-cache-$VERSION.hpi
           asset_content_type: application/zip

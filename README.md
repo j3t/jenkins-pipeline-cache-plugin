@@ -12,14 +12,14 @@ The plugin restores an existing backup before the cache step gets executed and c
 
 You have the following configuration parameters:
 1. `folder` - path to the files you want to cache
-1. `key` - name to identify the cache in general
 1. `hashFiles` - hash of selected files to identify changes
+1. `type` - name to identify the cache in general
 
-The idea behind `hashFiles` is to hash all files which have impact to the cache. For example, if you want to cache the Maven-Repository, then it makes sense to hash all poms. If the poms have not changed then the cache should be still the same. On the other hand, when the poms have changed then probably no backup exists. In this case the latest backup with the same `key` is restored instead.
+The idea behind `hashFiles` is to hash all files which have impact to the cache. For example, if you want to cache the Maven-Repository, then it makes sense to create a from all poms. If the poms have not changed then the cache should be still the same. On the other hand, when the poms have changed then probably no backup exists. In this case the `type` is used as fallback and the latest cache with same `type` is restored instead.
 
 ```
 node {
-  cache (folder: '$HOME/.m2/repository', key: 'my-project-maven', hashFiles: '**/pom.xml') {
+  cache (folder: '$HOME/.m2/repository', hashFiles: '**/pom.xml', type: 'my-project-maven') {
     // build project
   }
 }
@@ -42,7 +42,7 @@ Cache Size: 14959104 B
 [Pipeline] End of Pipeline
 Finished: SUCCESS
 ```
-The cache has been saved, and the assigned `key` is `my-project-maven-7b6b057c61d8150a0a939265b41c42de`. The consists of the specified `key` and a suffix which is generated from the poms.
+The cache has been saved, and the assigned `key` is `my-project-maven-7b6b057c61d8150a0a939265b41c42de`. The `key` is just the hash of all poms (see `hashFiles`) and then prefixed with the `type`.
 
 If you execute the job again, then the output is like
 ```

@@ -43,8 +43,8 @@ public class CacheStepExecutionTest {
         createWorkspaceFile("content", "pom.xml");
 
         // GIVEN
-        String key = UUID.randomUUID().toString();
-        CacheStep step = new CacheStep(folder.getRoot().getAbsolutePath(), key, "**/pom.xml");
+        String type = UUID.randomUUID().toString();
+        CacheStep step = new CacheStep(folder.getRoot().getAbsolutePath(), "**/pom.xml", type);
 
         // WHEN
         String hash = new CacheStepExecution(stepContext, step, cache).createFileHash();
@@ -62,8 +62,8 @@ public class CacheStepExecutionTest {
         createWorkspaceFile("content", "b", "pom.xml");
 
         // GIVEN
-        String key = UUID.randomUUID().toString();
-        CacheStep step = new CacheStep(folder.getRoot().getAbsolutePath(), key, "**/pom.xml");
+        String type = UUID.randomUUID().toString();
+        CacheStep step = new CacheStep(folder.getRoot().getAbsolutePath(), "**/pom.xml", type);
 
         // WHEN
         String hash = new CacheStepExecution(stepContext, step, cache).createFileHash();
@@ -81,8 +81,8 @@ public class CacheStepExecutionTest {
         createWorkspaceFile("content", "pom.xml");
 
         // GIVEN
-        String key = UUID.randomUUID().toString();
-        CacheStep step = new CacheStep(folder.getRoot().getAbsolutePath(), key, "**/pom.xml");
+        String type = UUID.randomUUID().toString();
+        CacheStep step = new CacheStep(folder.getRoot().getAbsolutePath(), "**/pom.xml", type);
 
         // WHEN
         String hash = new CacheStepExecution(stepContext, step, cache).createFileHash();

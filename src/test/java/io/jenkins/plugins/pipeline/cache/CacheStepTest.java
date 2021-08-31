@@ -16,6 +16,9 @@ import org.junit.rules.TemporaryFolder;
 import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.JenkinsRule;
 
+/**
+ * Integration test with Jenkins and MinIO.
+ */
 public class CacheStepTest {
 
     @ClassRule
@@ -59,7 +62,7 @@ public class CacheStepTest {
                 "echo env.JOB_NAME\n" +
                 "sh 'echo bla > pom.xml'\n" +
                 "echo 'before cache'\n" +
-                "cache(folder: '"+folder.getRoot().getAbsolutePath()+"', key: 'bla-foo', hashFiles: '**/pom.xml') {\n" +
+                "cache(folder: '"+folder.getRoot().getAbsolutePath()+"', hashFiles: '**/pom.xml', type: 'bla-foo') {\n" +
                 "  echo 'within cache'\n" +
                 "}\n" +
                 "echo 'after cache'\n" +

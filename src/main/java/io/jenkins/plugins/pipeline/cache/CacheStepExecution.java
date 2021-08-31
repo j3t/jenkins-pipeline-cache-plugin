@@ -40,8 +40,8 @@ public class CacheStepExecution extends GeneralNonBlockingStepExecution {
     }
 
     /**
-     * Collects relevant workspace files (always in the same order, hopefully) and then teh hash of the content will be returned. The
-     * hash should be consistent as long as the relevant files are the same.
+     * Collects relevant workspace files (always in the same order, hopefully) and then the content gets hashed and the value will be
+     * returned. The hash should be consistent as long as the relevant files are the same.
      */
     String createFileHash() throws IOException, InterruptedException {
         PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + step.getHashFiles());
@@ -63,10 +63,10 @@ public class CacheStepExecution extends GeneralNonBlockingStepExecution {
     }
 
     private String[] createRestoreKeys() throws IOException, InterruptedException {
-        String key = getContext().get(EnvVars.class).expand(step.getKey());
+        String type = getContext().get(EnvVars.class).expand(step.getType());
         String hash = createFileHash();
 
-        return new String[]{key + "-" + hash, key};
+        return new String[]{type + "-" + hash, type};
     }
 
     @Override

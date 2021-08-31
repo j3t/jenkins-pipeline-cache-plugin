@@ -26,14 +26,14 @@ public class CacheStep extends Step implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final String folder;
-    private final String key;
     private final String hashFiles;
+    private final String type;
 
     @DataBoundConstructor
-    public CacheStep(String folder, String key, String hashFiles) {
+    public CacheStep(String folder, String hashFiles, String type) {
         this.folder = folder;
-        this.key = key;
         this.hashFiles = hashFiles;
+        this.type = type;
     }
 
     @Override
@@ -45,8 +45,8 @@ public class CacheStep extends Step implements Serializable {
         return folder;
     }
 
-    public String getKey() {
-        return key;
+    public String getType() {
+        return type;
     }
 
     public String getHashFiles() {

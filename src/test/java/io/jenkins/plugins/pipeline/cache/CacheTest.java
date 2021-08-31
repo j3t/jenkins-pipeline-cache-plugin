@@ -21,6 +21,9 @@ import org.junit.rules.TemporaryFolder;
 
 import hudson.FilePath;
 
+/**
+ * Makes sure that the {@link Cache} implementation works as expected by using a MinIO instance as storage provider.
+ */
 public class CacheTest {
 
     @ClassRule

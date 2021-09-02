@@ -24,8 +24,8 @@ jobs:
       - name: Get the version
         id: get_version
         run: |
-          upload_url=$(curl -sL https://api.github.com/repos/j3t/jenkins-pipeline-cache-plugin/releases/tags/$VERSION | jq .upload_url)
           echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+          upload_url=$(curl -sL https://api.github.com/repos/j3t/jenkins-pipeline-cache-plugin/releases/tags/$VERSION | jq .upload_url)
       - name: Upload release artifacts
         uses: actions/upload-release-asset@v1
         env:

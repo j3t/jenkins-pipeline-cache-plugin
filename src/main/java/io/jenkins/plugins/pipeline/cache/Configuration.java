@@ -1,5 +1,7 @@
 package io.jenkins.plugins.pipeline.cache;
 
+import java.io.Serializable;
+
 import org.kohsuke.stapler.DataBoundSetter;
 
 import hudson.Extension;
@@ -10,7 +12,9 @@ import jenkins.model.GlobalConfiguration;
  * Pipeline cache configuration.
  */
 @Extension
-public class Configuration extends GlobalConfiguration {
+public class Configuration extends GlobalConfiguration implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private String username;
     private String password;

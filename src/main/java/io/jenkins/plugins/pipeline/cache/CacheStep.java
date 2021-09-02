@@ -13,13 +13,8 @@ import hudson.Extension;
 import hudson.model.TaskListener;
 
 /**
- * Provides a cache step which can be used in pipelines to backup and restore files. The step tries to restore a the last backup and when
- * the step is completed the folder is stored in S3. The given key is assigned to the backup in S3 and if the hashFiles parameter is
- * present then the matching files are hashed and this hash is appended to the key.<br>
- * <br>
- * For example when the key is bla-foo and hashFiles is **&#47;pom.xml then all the pom.xml files in the workspace are hashed and the
- * resulting keys used to restore the folder are then like bla-foo-9a0364b9e99bb480dd25e1f0284c8555 and the second one is just bla-foo.
- * When the first key doesn't exist then the latest key starting with bla-foo is used instead.
+ * Provides a pipeline step to cache files located on the build agent. Before the step gets executed, the files are restored from S3
+ * and afterwards the state is sored in S3. See README.md for more details.
  */
 public class CacheStep extends Step implements Serializable {
 
@@ -29,6 +24,11 @@ public class CacheStep extends Step implements Serializable {
     private final String hashFiles;
     private final String type;
 
+    /**
+     * @param folder absolute path to the folder you want to cache (e.g. $HOME/.m2/repository)
+     * @param hashFiles glob pattern to filter files which have impact to the cache (e.g. **&#47;pom.xml)
+     * @param type general name to identify the cache in general (e.g. my-project-maven)
+     */
     @DataBoundConstructor
     public CacheStep(String folder, String hashFiles, String type) {
         this.folder = folder;

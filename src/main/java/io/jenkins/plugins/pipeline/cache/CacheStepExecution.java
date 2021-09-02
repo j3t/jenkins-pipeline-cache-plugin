@@ -1,19 +1,8 @@
 package io.jenkins.plugins.pipeline.cache;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.SequenceInputStream;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
-import java.util.stream.Stream;
+import java.io.PrintStream;
 
-import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.collections.IteratorUtils;
 import org.jenkinsci.plugins.workflow.steps.BodyExecutionCallback;
 import org.jenkinsci.plugins.workflow.steps.GeneralNonBlockingStepExecution;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -21,67 +10,48 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.model.TaskListener;
+import io.jenkins.plugins.pipeline.cache.agent.BackupCallable;
+import io.jenkins.plugins.pipeline.cache.agent.FileHashCallable;
+import io.jenkins.plugins.pipeline.cache.agent.RestoreCallable;
 
+/**
+ * Executes pipeline step 'cache'.
+ */
 public class CacheStepExecution extends GeneralNonBlockingStepExecution {
 
     private static final long serialVersionUID = 1L;
 
-    private final transient Cache cache;
+    private final transient PrintStream logger;
     private final CacheStep step;
+    private final Configuration config;
 
     public CacheStepExecution(StepContext context, CacheStep step) throws IOException, InterruptedException {
-        this(context, step, new Cache(Configuration.get(), context.get(TaskListener.class).getLogger()));
-    }
-
-    public CacheStepExecution(StepContext context, CacheStep step, Cache cache) {
         super(context);
         this.step = step;
-        this.cache = cache;
-    }
-
-    /**
-     * Collects relevant workspace files (always in the same order, hopefully) and then the content gets hashed and the value will be
-     * returned. The hash should be consistent as long as the relevant files are the same.
-     */
-    String createFileHash() throws IOException, InterruptedException {
-        PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + step.getHashFiles());
-        Path workspace = Paths.get(getContext().get(EnvVars.class).get("WORKSPACE"));
-        Stream<FileInputStream> streams = Files.walk(workspace)
-                .filter(pathMatcher::matches)
-                .sorted()
-                .map(path -> {
-                    try {
-                        return new FileInputStream(path.toFile());
-                    } catch (FileNotFoundException e) {
-                        throw new IllegalStateException(e);
-                    }
-                });
-
-        try (SequenceInputStream sequenceInputStream = new SequenceInputStream(IteratorUtils.asEnumeration(streams.iterator()))) {
-            return DigestUtils.md5Hex(sequenceInputStream);
-        }
-    }
-
-    private String[] createRestoreKeys() throws IOException, InterruptedException {
-        String type = getContext().get(EnvVars.class).expand(step.getType());
-        String hash = createFileHash();
-
-        return new String[]{type + "-" + hash, type};
+        this.logger = context.get(TaskListener.class).getLogger();
+        this.config = Configuration.get();
     }
 
     @Override
     public boolean start() throws Exception {
-        FilePath folder = new FilePath(new File(step.getFolder()));
-        String[] restoreKeys = createRestoreKeys();
+        // get workspace (might be located on a remote machine)
+        FilePath workspace = getContext().get(FilePath.class);
+        // we have to locate the folder via the workspace in order to get access to the agents file system
+        FilePath folder = workspace.child(step.getFolder());
+        String type = getContext().get(EnvVars.class).expand(step.getType());
+
+        // hash workspace files and create restore keys
+        String hash = workspace.act(new FileHashCallable(step.getHashFiles()));
+        String[] restoreKeys = new String[]{type + "-" + hash, type};
 
         // restore folder
-        cache.restore(folder, restoreKeys);
+        folder.act(new RestoreCallable(config, restoreKeys)).printInfos(logger);
 
-        // execute step and backup folder after completion
+        // execute inner-step and backup folder after completion
         getContext().newBodyInvoker().withCallback(new BodyExecutionCallback.TailCall() {
             @Override
             protected void finished(StepContext context) throws Exception {
-                cache.backup(folder, restoreKeys[0]);
+                folder.act(new BackupCallable(config, restoreKeys[0])).printInfos(logger);
             }
         }).start();
 

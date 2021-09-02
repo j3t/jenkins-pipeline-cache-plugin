@@ -1,5 +1,6 @@
 package io.jenkins.plugins.pipeline.cache;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
@@ -45,7 +46,7 @@ public class CacheStepTest {
     public static BuildWatcher buildWatcher = new BuildWatcher();
 
     @Test
-    public void testCacheNotExistsYet() throws Exception {
+    public void testBackupAndRestore() throws Exception {
         // GIVEN
         Configuration.get().setUsername(minio.accessKey());
         Configuration.get().setPassword(minio.secretKey());
@@ -54,25 +55,41 @@ public class CacheStepTest {
         Configuration.get().setEndpoint(minio.getExternalAddress());
 
         // GIVEN
-        FileUtils.writeStringToFile(folder.newFile(), "some test data", StandardCharsets.UTF_8);
+        File file = folder.newFile();
+        FileUtils.writeStringToFile(file, "some test data", StandardCharsets.UTF_8);
 
         // WHEN
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition("node {\n" +
-                "echo env.JOB_NAME\n" +
-                "sh 'echo bla > pom.xml'\n" +
-                "echo 'before cache'\n" +
-                "cache(folder: '"+folder.getRoot().getAbsolutePath()+"', hashFiles: '**/pom.xml', type: 'bla-foo') {\n" +
-                "  echo 'within cache'\n" +
-                "}\n" +
-                "echo 'after cache'\n" +
+                "  sh 'echo bla > pom.xml'\n" +
+                "  cache(folder: '"+folder.getRoot().getAbsolutePath()+"', hashFiles: '**/pom.xml', type: 'bla-foo') {\n" +
+                "    sh 'cat "+file.getAbsolutePath()+"'\n" +
+                "  }\n" +
                 "}", true));
         WorkflowRun b = p.scheduleBuild2(0).waitForStart();
         j.waitForCompletion(b);
 
         // THEN
         j.assertBuildStatusSuccess(b);
+        j.assertLogContains("Cache not restored (no such key found)", b);
+        j.assertLogContains("some test data", b);
         j.assertLogContains("Cache saved with key: bla-foo-3cd7a0db76ff9dca48979e24c39b408c", b);
+
+        // WHEN
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  sh 'rm "+file.getAbsolutePath()+"'\n" +
+                "  cache(folder: '"+folder.getRoot().getAbsolutePath()+"', hashFiles: '**/pom.xml', type: 'bla-foo') {\n" +
+                "    sh 'cat "+file.getAbsolutePath()+"'\n" +
+                "  }\n" +
+                "}", true));
+        b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("Cache restored from key: bla-foo-3cd7a0db76ff9dca48979e24c39b408c", b);
+        j.assertLogContains("some test data", b);
+        j.assertLogContains("Cache already exists (bla-foo-3cd7a0db76ff9dca48979e24c39b408c), not saving cache.", b);
     }
 
 }

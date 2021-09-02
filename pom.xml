@@ -10,7 +10,7 @@
 
     <groupId>com.github.j3t</groupId>
     <artifactId>jenkins-pipeline-cache</artifactId>
-    <version>0.0.3-SNAPSHOT</version>
+    <version>0.0.3</version>
     <packaging>hpi</packaging>
 
     <properties>
@@ -124,7 +124,7 @@
 
     <scm>
         <developerConnection>scm:git:ssh://git@github.com/j3t/jenkins-pipeline-cache-plugin.git</developerConnection>
-      <tag>HEAD</tag>
+      <tag>0.0.3</tag>
   </scm>
 
     <distributionManagement>

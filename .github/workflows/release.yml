@@ -23,14 +23,16 @@ jobs:
         run: mvn -B package -DskipTests
       - name: Get the version
         id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+        run: |
+          upload_url=$(curl -sL https://api.github.com/repos/j3t/jenkins-pipeline-cache-plugin/releases/tags/$VERSION | jq .upload_url)
+          echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
       - name: Upload release artifacts
         uses: actions/upload-release-asset@v1
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: $(curl -sL https://api.github.com/repos/j3t/jenkins-pipeline-cache-plugin/releases/tags/$VERSION | jq .upload_url)
+          upload_url: ${{ steps.get_version.outputs.upload_url }}
           asset_path: ./target/jenkins-pipeline-cache.hpi
           asset_name: jenkins-pipeline-cache-$VERSION.hpi
           asset_content_type: application/zip

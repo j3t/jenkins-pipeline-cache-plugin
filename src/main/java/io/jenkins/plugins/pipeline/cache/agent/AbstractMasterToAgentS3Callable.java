@@ -30,7 +30,7 @@ public abstract class AbstractMasterToAgentS3Callable extends MasterToSlaveFileC
     /**
      * Provides a {@link AmazonS3} instance which can used on the agent directly.
      */
-    AmazonS3 s3() {
+    public AmazonS3 s3() {
         if (client == null) {
             synchronized (this) {
                 if (client == null) {

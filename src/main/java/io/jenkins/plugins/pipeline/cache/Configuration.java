@@ -106,7 +106,7 @@ public class Configuration extends GlobalConfiguration implements Serializable {
             Integer.parseInt(value);
             return FormValidation.ok();
         } catch (NumberFormatException e) {
-            return FormValidation.error("Not a number");
+            return FormValidation.error("Not an integer");
         }
     }
 }

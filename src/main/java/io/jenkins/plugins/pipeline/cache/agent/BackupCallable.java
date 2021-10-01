@@ -42,7 +42,8 @@ public class BackupCallable extends AbstractMasterToAgentS3Callable {
         ObjectMetadata uploadedObjectMetadata = s3().getObjectMetadata(config.getBucket(), key);
 
         ResultBuilder result = new ResultBuilder();
-        if (uploadedObjectMetadata.getContentLength() > config.getSizeThresholdMb() * MB_TO_BYTES) {
+        if (config.getSizeThresholdMb() > 0 &&
+                uploadedObjectMetadata.getContentLength() > config.getSizeThresholdMb() * MB_TO_BYTES) {
             result.withInfo("WARNING: cache is larger than configured size threshold," +
                     " at least one object is always cached despite that");
         }

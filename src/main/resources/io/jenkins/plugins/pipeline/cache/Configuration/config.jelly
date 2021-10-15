@@ -21,5 +21,9 @@
         <f:entry title="${%Endpoint}" field="endpoint">
             <f:textbox default="https://s3.amazonaws.com" />
         </f:entry>
+
+        <f:entry title="${%Bucket size threshold (MB)}" field="sizeThresholdMb">
+            <f:textbox default="5000" />
+        </f:entry>
     </f:section>
 </j:jelly>

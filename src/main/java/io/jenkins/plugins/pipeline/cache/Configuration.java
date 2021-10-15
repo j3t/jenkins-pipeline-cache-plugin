@@ -1,13 +1,18 @@
 package io.jenkins.plugins.pipeline.cache;
 
+import java.io.IOException;
 import java.io.Serializable;
 
+import hudson.util.FormValidation;
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundSetter;
 
 import hudson.Extension;
 import hudson.ExtensionList;
 import jenkins.model.GlobalConfiguration;
+import org.kohsuke.stapler.QueryParameter;
+
+import javax.servlet.ServletException;
 
 /**
  * Pipeline cache configuration.
@@ -23,6 +28,7 @@ public class Configuration extends GlobalConfiguration implements Serializable {
     private String bucket;
     private String region;
     private String endpoint;
+    private long sizeThresholdMb; // stored in MB
 
     public Configuration() {
         load();
@@ -82,4 +88,25 @@ public class Configuration extends GlobalConfiguration implements Serializable {
         save();
     }
 
+    public long getSizeThresholdMb() {
+        return sizeThresholdMb;
+    }
+
+    /**
+     * @param sizeThresholdMb Storage size threshold in megabytes (1e6 bytes)
+     */
+    @DataBoundSetter
+    public void setSizeThresholdMb(long sizeThresholdMb) {
+        this.sizeThresholdMb = sizeThresholdMb;
+        save();
+    }
+
+    public FormValidation doCheckSizeThresholdMb(@QueryParameter String value) throws IOException, ServletException {
+        try {
+            Integer.parseInt(value);
+            return FormValidation.ok();
+        } catch (NumberFormatException e) {
+            return FormValidation.error("Not an integer");
+        }
+    }
 }

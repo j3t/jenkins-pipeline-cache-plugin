@@ -2,6 +2,7 @@ package io.jenkins.plugins.pipeline.cache;
 
 import static java.lang.String.format;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
 
@@ -55,6 +56,11 @@ public class MinioMcContainer extends GenericContainer<MinioMcContainer> {
 
     public void createObject(String bucket, String key, String content) throws IOException, InterruptedException {
         execSecure("echo -n \"%s\" | mc pipe test-minio/%s/%s", content, bucket, key);
+    }
+
+    public void createObject(String bucket, String key, int megabytes) throws IOException, InterruptedException {
+        execSecure("dd if=/dev/urandom of=tmp.rnd bs=1000000 count=%s", megabytes);
+        execSecure("mc cp tmp.rnd test-minio/%s/%s", bucket, key);
     }
 
     public void createObject(String bucket, String key) throws IOException, InterruptedException {

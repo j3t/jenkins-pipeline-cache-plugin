@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
@@ -44,7 +45,8 @@ public class BackupCallable extends AbstractMasterToAgentS3Callable {
         ResultBuilder result = new ResultBuilder();
         if (config.getSizeThresholdMb() > 0 &&
                 uploadedObjectMetadata.getContentLength() > config.getSizeThresholdMb() * MB_TO_BYTES) {
-            result.withInfo("WARNING: cache is larger than configured size threshold," +
+            result.withInfo("WARNING: cache is larger than configured size threshold of "
+                    + config.getSizeThresholdMb() + " MB," +
                     " at least one object is always cached despite that");
         }
         ResultBuilder resultBuilder = checkSizeThreshold(result, config.getBucket(), config.getSizeThresholdMb());
@@ -61,7 +63,7 @@ public class BackupCallable extends AbstractMasterToAgentS3Callable {
         if (sizeThresholdMb <= 0) {
             return result.withInfo("Size threshold is less equal 0, will not delete any old objects");
         }
-        ArrayList<S3ObjectSummary> s3ObjectSummaries = getS3ObjectSummaries(bucket);
+        List<S3ObjectSummary> s3ObjectSummaries = getS3ObjectSummaries(bucket);
         if (s3ObjectSummaries.isEmpty()) {
             // this should not happen though as @checkSizeThreshold is called after storing an object
             return result.withInfo("Cache is empty");
@@ -71,7 +73,7 @@ public class BackupCallable extends AbstractMasterToAgentS3Callable {
         return result;
     }
 
-    private void deleteOldObjects(ResultBuilder result, ArrayList<S3ObjectSummary> s3ObjectSummaries, String bucket, long sizeThresholdBytes) {
+    private void deleteOldObjects(ResultBuilder result, List<S3ObjectSummary> s3ObjectSummaries, String bucket, long sizeThresholdBytes) {
         long bytesTotal = s3ObjectSummaries.stream().map(S3ObjectSummary::getSize).reduce(0L, Long::sum);
         if (bytesTotal > sizeThresholdBytes) {
             // sort to select oldest data
@@ -88,7 +90,7 @@ public class BackupCallable extends AbstractMasterToAgentS3Callable {
         }
     }
 
-    private ArrayList<S3ObjectSummary> getS3ObjectSummaries(String bucket) {
+    private List<S3ObjectSummary> getS3ObjectSummaries(String bucket) {
         ObjectListing objectListing = s3().listObjects(bucket);
         ArrayList<S3ObjectSummary> s3ObjectSummaries = new ArrayList<>(objectListing.getObjectSummaries());
         // handle pagination of objectListings

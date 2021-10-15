@@ -14,6 +14,9 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.util.UUID;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 /**
  * Integration test with Jenkins and MinIO.
  */
@@ -74,7 +77,7 @@ public class CacheStepSizeThresholdTest {
 
             for (int j = 0; j <= i; j++) {
                 // THEN
-                assert client.doesObjectExist(bucket, "asdf" + i);
+                assertTrue(client.doesObjectExist(bucket, "asdf" + i));
 
             }
         }
@@ -90,7 +93,7 @@ public class CacheStepSizeThresholdTest {
         backupCallable.checkSizeThreshold(resultBuilder, bucket, 1);
 
         // THEN
-        assert client.doesObjectExist(bucket, "asdf1");
+        assertTrue(client.doesObjectExist(bucket, "asdf1"));
 
         // GIVEN
         mc.createObject(bucket, "asdf2", 2);
@@ -99,8 +102,8 @@ public class CacheStepSizeThresholdTest {
         backupCallable.checkSizeThreshold(resultBuilder, bucket, 1);
 
         // THEN
-        assert !client.doesObjectExist(bucket, "asdf1");
-        assert client.doesObjectExist(bucket, "asdf2");
+        assertFalse(client.doesObjectExist(bucket, "asdf1"));
+        assertTrue(client.doesObjectExist(bucket, "asdf2"));
     }
 
     @Test
@@ -117,10 +120,10 @@ public class CacheStepSizeThresholdTest {
         backupCallable.checkSizeThreshold(resultBuilder, bucket, 0);
 
         // THEN
-        assert client.doesObjectExist(bucket, "asdf1");
-        assert client.doesObjectExist(bucket, "asdf2");
-        assert client.doesObjectExist(bucket, "asdf3");
-        assert client.doesObjectExist(bucket, "asdf4");
+        assertTrue(client.doesObjectExist(bucket, "asdf1"));
+        assertTrue(client.doesObjectExist(bucket, "asdf2"));
+        assertTrue(client.doesObjectExist(bucket, "asdf3"));
+        assertTrue(client.doesObjectExist(bucket, "asdf4"));
     }
 
 }

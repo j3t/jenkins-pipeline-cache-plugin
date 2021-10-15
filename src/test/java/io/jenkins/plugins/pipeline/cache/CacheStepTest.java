@@ -122,7 +122,7 @@ public class CacheStepTest {
         // THEN
         j.assertBuildStatusSuccess(b);
         j.assertLogContains("Cache size: 209", b); // how to match with regex for whole line?
-        j.assertLogContains("WARNING: cache is larger than configured size threshold", b);
+        j.assertLogContains("WARNING: cache is larger than configured size threshold of 1 MB", b);
 
         // WHEN
         p.setDefinition(new CpsFlowDefinition("node {\n" +
@@ -138,6 +138,8 @@ public class CacheStepTest {
         // THEN
         j.assertBuildStatusSuccess(b);
         j.assertLogContains("Cache restored from key: bla-foo-3cd7a0db76ff9dca48979e24c39b408c", b);
+        // Checks that the downloaded cache is bigger than threshold.
+        // It makes sure that the threshold can be exceeded and the file was stored.
         j.assertLogContains("total 2.1M", b);
         j.assertLogContains("Cache already exists (bla-foo-3cd7a0db76ff9dca48979e24c39b408c), not saving cache.", b);
 
@@ -160,7 +162,7 @@ public class CacheStepTest {
         // THEN
         j.assertBuildStatusSuccess(b);
         j.assertLogContains("Cache not restored (no such key found)", b);
-        j.assertLogContains("total 1.1M", b);
+        // Checks that file from a different project was removed so that the new 1 MB file can be stored
         j.assertLogContains("Cache storage exceeded size threshold, removed 1 item(s)", b);
     }
 }

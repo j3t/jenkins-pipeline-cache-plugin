@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
 
+import org.json.JSONObject;
 import org.testcontainers.containers.GenericContainer;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
@@ -67,4 +68,8 @@ public class MinioMcContainer extends GenericContainer<MinioMcContainer> {
         createObject(bucket, key, UUID.randomUUID().toString());
     }
 
+    public long getBucketSize(String bucket) throws IOException, InterruptedException {
+        String result = execSecure(format("mc du --json test-minio/%s", bucket)).getStdout();
+        return Long.parseLong(new JSONObject(result).optString("size"));
+    }
 }

@@ -5,13 +5,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.client.builder.AwsClientBuilder;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-
-import io.jenkins.plugins.pipeline.cache.Configuration;
+import io.jenkins.plugins.pipeline.cache.CacheConfiguration;
+import io.jenkins.plugins.pipeline.cache.s3.CacheItemRepository;
 import jenkins.MasterToSlaveFileCallable;
 
 /**
@@ -20,30 +15,27 @@ import jenkins.MasterToSlaveFileCallable;
  */
 public abstract class AbstractMasterToAgentS3Callable extends MasterToSlaveFileCallable<AbstractMasterToAgentS3Callable.Result> {
 
-    final Configuration config;
-    private volatile AmazonS3 client;
+    protected final CacheConfiguration config;
+    private volatile CacheItemRepository cacheItemRepository;
 
-    protected AbstractMasterToAgentS3Callable(Configuration config) {
+    protected AbstractMasterToAgentS3Callable(CacheConfiguration config) {
         this.config = config;
     }
 
-    /**
-     * Provides a {@link AmazonS3} instance which can used on the agent directly.
-     */
-    public AmazonS3 s3() {
-        if (client == null) {
+    protected CacheItemRepository cacheItemRepository() {
+        if (cacheItemRepository == null) {
             synchronized (this) {
-                if (client == null) {
-                    client = AmazonS3ClientBuilder
-                            .standard()
-                            .withPathStyleAccessEnabled(true)
-                            .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(config.getUsername(), config.getPassword())))
-                            .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(config.getEndpoint(), config.getRegion()))
-                            .build();
-                }
+                cacheItemRepository = new CacheItemRepository(
+                        config.getUsername(),
+                        config.getPassword(),
+                        config.getRegion(),
+                        config.getEndpoint(),
+                        config.getBucket()
+                );
             }
         }
-        return client;
+
+        return cacheItemRepository;
     }
 
     public static class ResultBuilder {
@@ -68,6 +60,13 @@ public abstract class AbstractMasterToAgentS3Callable extends MasterToSlaveFileC
         }
     }
 
+    protected String performanceString(String key, long startNanoTime) {
+        double duration = (System.nanoTime() - startNanoTime) / 1000000000D;
+        long size = cacheItemRepository().getContentLength(key);
+        long speed = (long) (size / duration);
+        return String.format("%s bytes in %.2f secs (%s bytes/sec)", size, duration, speed);
+    }
+
     /**
      * Result object.
      */
@@ -90,4 +89,5 @@ public abstract class AbstractMasterToAgentS3Callable extends MasterToSlaveFileC
             infos.forEach(logger::println);
         }
     }
+
 }

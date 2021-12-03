@@ -1,4 +1,4 @@
-package io.jenkins.plugins.pipeline.cache;
+package io.jenkins.plugins.pipeline.cache.s3;
 
 import java.io.ByteArrayInputStream;
 import java.io.OutputStream;
@@ -122,8 +122,11 @@ public class S3OutputStream extends OutputStream {
 
     protected void flushBufferAndRewind() {
         if (uploadId == null) {
+            ObjectMetadata metadata = new ObjectMetadata();
+            CacheItemRepository.updateLastAccess(metadata);
             final InitiateMultipartUploadRequest request = new InitiateMultipartUploadRequest(this.bucket, this.path)
-                    .withCannedACL(CannedAccessControlList.BucketOwnerFullControl);
+                    .withCannedACL(CannedAccessControlList.BucketOwnerFullControl)
+                    .withObjectMetadata(metadata);
             InitiateMultipartUploadResult initResponse = s3Client.initiateMultipartUpload(request);
             this.uploadId = initResponse.getUploadId();
         }

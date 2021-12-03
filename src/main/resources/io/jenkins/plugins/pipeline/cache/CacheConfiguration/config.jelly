@@ -22,8 +22,11 @@
             <f:textbox default="https://s3.amazonaws.com" />
         </f:entry>
 
-        <f:entry title="${%Bucket size threshold (MB)}" field="sizeThresholdMb">
+        <f:entry title="${%Threshold}" field="threshold">
             <f:textbox default="5000" />
         </f:entry>
+
+        <f:validateButton title="Test connection" progress="Testing S3 connectivity..." method="testConnection"
+                          with="username,password,bucket,region,endpoint"/>
     </f:section>
 </j:jelly>

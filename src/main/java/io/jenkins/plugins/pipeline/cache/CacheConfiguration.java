@@ -1,7 +1,7 @@
 package io.jenkins.plugins.pipeline.cache;
 
-import java.io.IOException;
 import java.io.Serializable;
+import java.util.Objects;
 
 import hudson.util.FormValidation;
 import org.jenkinsci.Symbol;
@@ -9,17 +9,19 @@ import org.kohsuke.stapler.DataBoundSetter;
 
 import hudson.Extension;
 import hudson.ExtensionList;
+import io.jenkins.plugins.pipeline.cache.s3.CacheItemRepository;
 import jenkins.model.GlobalConfiguration;
-import org.kohsuke.stapler.QueryParameter;
+import jenkins.model.Jenkins;
 
-import javax.servlet.ServletException;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.verb.POST;
 
 /**
- * Pipeline cache configuration.
+ * Global cache configuration.
  */
 @Extension
 @Symbol("pipeline-cache")
-public class Configuration extends GlobalConfiguration implements Serializable {
+public class CacheConfiguration extends GlobalConfiguration implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -28,14 +30,14 @@ public class Configuration extends GlobalConfiguration implements Serializable {
     private String bucket;
     private String region;
     private String endpoint;
-    private long sizeThresholdMb; // stored in MB
+    private long threshold;
 
-    public Configuration() {
+    public CacheConfiguration() {
         load();
     }
 
-    public static Configuration get() {
-        return ExtensionList.lookupSingleton(Configuration.class);
+    public static CacheConfiguration get() {
+        return ExtensionList.lookupSingleton(CacheConfiguration.class);
     }
 
     public String getUsername() {
@@ -88,20 +90,20 @@ public class Configuration extends GlobalConfiguration implements Serializable {
         save();
     }
 
-    public long getSizeThresholdMb() {
-        return sizeThresholdMb;
+    public long getThreshold() {
+        return threshold;
     }
 
     /**
-     * @param sizeThresholdMb Storage size threshold in megabytes (1e6 bytes)
+     * @param threshold threshold in megabyte when the system removes last recently used item from the cache
      */
     @DataBoundSetter
-    public void setSizeThresholdMb(long sizeThresholdMb) {
-        this.sizeThresholdMb = sizeThresholdMb;
+    public void setThreshold(long threshold) {
+        this.threshold = threshold;
         save();
     }
 
-    public FormValidation doCheckSizeThresholdMb(@QueryParameter String value) throws IOException, ServletException {
+    public FormValidation doCheckThreshold(@QueryParameter String value) {
         try {
             Integer.parseInt(value);
             return FormValidation.ok();
@@ -109,4 +111,26 @@ public class Configuration extends GlobalConfiguration implements Serializable {
             return FormValidation.error("Not an integer");
         }
     }
+
+    @POST
+    public FormValidation doTestConnection(
+            @QueryParameter String username,
+            @QueryParameter String password,
+            @QueryParameter String bucket,
+            @QueryParameter String region,
+            @QueryParameter String endpoint) {
+        Objects.requireNonNull(Jenkins.get()).checkPermission(Jenkins.ADMINISTER);
+
+        try {
+            CacheItemRepository repo = new CacheItemRepository(username, password, region, endpoint, bucket);
+
+            if (repo.bucketExists()) {
+                return FormValidation.ok("OK");
+            }
+            return FormValidation.error("Bucket not exists");
+        } catch (Exception e) {
+            return FormValidation.error(e.getMessage());
+        }
+    }
+
 }

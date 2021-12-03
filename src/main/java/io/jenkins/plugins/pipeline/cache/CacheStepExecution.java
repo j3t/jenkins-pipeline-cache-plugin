@@ -2,16 +2,16 @@ package io.jenkins.plugins.pipeline.cache;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.jenkinsci.plugins.workflow.steps.BodyExecutionCallback;
 import org.jenkinsci.plugins.workflow.steps.GeneralNonBlockingStepExecution;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
-import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.model.TaskListener;
 import io.jenkins.plugins.pipeline.cache.agent.BackupCallable;
-import io.jenkins.plugins.pipeline.cache.agent.FileHashCallable;
 import io.jenkins.plugins.pipeline.cache.agent.RestoreCallable;
 
 /**
@@ -23,35 +23,44 @@ public class CacheStepExecution extends GeneralNonBlockingStepExecution {
 
     private final transient PrintStream logger;
     private final CacheStep step;
-    private final Configuration config;
+    private final CacheConfiguration config;
 
     public CacheStepExecution(StepContext context, CacheStep step) throws IOException, InterruptedException {
         super(context);
         this.step = step;
         this.logger = context.get(TaskListener.class).getLogger();
-        this.config = Configuration.get();
+        this.config = CacheConfiguration.get();
     }
 
     @Override
     public boolean start() throws Exception {
-        // get workspace (might be located on a remote machine)
         FilePath workspace = getContext().get(FilePath.class);
-        // we have to locate the folder via the workspace in order to get access to the agents file system
-        FilePath folder = workspace.child(step.getFolder());
-        String type = getContext().get(EnvVars.class).expand(step.getType());
+        FilePath path = workspace.child(step.getPath());
+        String[] restoreKeys = Stream.concat(
+                        Stream.of(step.getKey()),
+                        Stream.of(Optional.ofNullable(step.getRestoreKeys()).orElse(new String[0]))
+                ).toArray(String[]::new);
 
-        // hash workspace files and create restore keys
-        String hash = workspace.act(new FileHashCallable(step.getHashFiles()));
-        String[] restoreKeys = new String[]{type + "-" + hash, type};
+        // restore existing cache
+        path.act(new RestoreCallable(config, restoreKeys)).printInfos(logger);
 
-        // restore folder
-        folder.act(new RestoreCallable(config, restoreKeys)).printInfos(logger);
-
-        // execute inner-step and backup folder after completion
-        getContext().newBodyInvoker().withCallback(new BodyExecutionCallback.TailCall() {
+        // execute inner-step and save cache afterwards
+        getContext().newBodyInvoker().withCallback(new BodyExecutionCallback() {
             @Override
-            protected void finished(StepContext context) throws Exception {
-                folder.act(new BackupCallable(config, restoreKeys[0])).printInfos(logger);
+            public void onSuccess(StepContext context, Object result) {
+                try {
+                    path.act(new BackupCallable(config, step.getKey(), step.getFilter())).printInfos(logger);
+                } catch (Exception x) {
+                    context.onFailure(x);
+                    return;
+                }
+                context.onSuccess(result);
+            }
+
+            @Override
+            public void onFailure(StepContext context, Throwable t) {
+                logger.println("Cache not saved (inner-step execution failed)");
+                context.onFailure(t);
             }
         }).start();
 

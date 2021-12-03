@@ -1,11 +1,8 @@
 package io.jenkins.plugins.pipeline.cache;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-import org.apache.commons.io.FileUtils;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -17,8 +14,11 @@ import org.junit.rules.TemporaryFolder;
 import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.JenkinsRule;
 
+import hudson.model.Result;
+
 /**
- * Integration test with Jenkins and MinIO.
+ * Checks that the cache step works as expected in pipelines. Each test starts with an empty bucket and the cache is also registered to
+ * Jenkins.
  */
 public class CacheStepTest {
 
@@ -31,89 +31,36 @@ public class CacheStepTest {
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
 
-    private String bucket;
-
-    @Before
-    public void setup() throws IOException, InterruptedException {
-        bucket = UUID.randomUUID().toString();
-        mc.createBucket(bucket);
-    }
-
     @Rule
     public JenkinsRule j = new JenkinsRule();
 
     @ClassRule
     public static BuildWatcher buildWatcher = new BuildWatcher();
 
-    @Test
-    public void testBackupAndRestore() throws Exception {
+    private String bucket;
+
+    @Before
+    public void setupJenkinsCache() throws IOException, InterruptedException {
         // GIVEN
-        Configuration.get().setUsername(minio.accessKey());
-        Configuration.get().setPassword(minio.secretKey());
-        Configuration.get().setBucket(bucket);
-        Configuration.get().setRegion("us-west-1");
-        Configuration.get().setEndpoint(minio.getExternalAddress());
+        bucket = UUID.randomUUID().toString();
+        mc.createBucket(bucket);
 
         // GIVEN
-        File file = folder.newFile();
-        FileUtils.writeStringToFile(file, "some test data", StandardCharsets.UTF_8);
-
-        // WHEN
-        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition("node {\n" +
-                "  sh 'echo bla > pom.xml'\n" +
-                "  cache(folder: '"+folder.getRoot().getAbsolutePath()+"', hashFiles: '**/pom.xml', type: 'bla-foo') {\n" +
-                "    sh 'cat "+file.getAbsolutePath()+"'\n" +
-                "  }\n" +
-                "}", true));
-        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
-        j.waitForCompletion(b);
-
-        // THEN
-        j.assertBuildStatusSuccess(b);
-        j.assertLogContains("Cache not restored (no such key found)", b);
-        j.assertLogContains("some test data", b);
-        j.assertLogContains("Cache saved with key: bla-foo-3cd7a0db76ff9dca48979e24c39b408c", b);
-
-        // WHEN
-        p.setDefinition(new CpsFlowDefinition("node {\n" +
-                "  sh 'rm "+file.getAbsolutePath()+"'\n" +
-                "  cache(folder: '"+folder.getRoot().getAbsolutePath()+"', hashFiles: '**/pom.xml', type: 'bla-foo') {\n" +
-                "    sh 'cat "+file.getAbsolutePath()+"'\n" +
-                "  }\n" +
-                "}", true));
-        b = p.scheduleBuild2(0).waitForStart();
-        j.waitForCompletion(b);
-
-        // THEN
-        j.assertBuildStatusSuccess(b);
-        j.assertLogContains("Cache restored from key: bla-foo-3cd7a0db76ff9dca48979e24c39b408c", b);
-        j.assertLogContains("some test data", b);
-        j.assertLogContains("Cache already exists (bla-foo-3cd7a0db76ff9dca48979e24c39b408c), not saving cache.", b);
+        CacheConfiguration.get().setUsername(minio.accessKey());
+        CacheConfiguration.get().setPassword(minio.secretKey());
+        CacheConfiguration.get().setBucket(bucket);
+        CacheConfiguration.get().setRegion("us-west-1");
+        CacheConfiguration.get().setEndpoint(minio.getExternalAddress());
+        CacheConfiguration.get().setThreshold(1);
     }
 
     @Test
-    public void testSizeThreshold() throws Exception {
-        // GIVEN
-        Configuration.get().setUsername(minio.accessKey());
-        Configuration.get().setPassword(minio.secretKey());
-        Configuration.get().setBucket(bucket);
-        Configuration.get().setRegion("us-west-1");
-        Configuration.get().setEndpoint(minio.getExternalAddress());
-        Configuration.get().setSizeThresholdMb(1);
-
-        // GIVEN
-        File file = folder.newFile();
-        FileUtils.writeStringToFile(file, "some test data", StandardCharsets.UTF_8);
-
+    public void testBackupAndRestore() throws Exception {
         // WHEN
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition("node {\n" +
-                "  sh 'echo bla > pom.xml'\n" +
-                "  sh 'dd if=/dev/urandom of="+file.getAbsolutePath()+" bs=1048576 count=2'\n" +
-                "  cache(folder: '"+folder.getRoot().getAbsolutePath()+"', hashFiles: '**/pom.xml', type: 'bla-foo') {\n" +
-                "    sh 'ls -alth'\n" +
-                "    sh 'ls -alth "+folder.getRoot().getAbsolutePath()+"'\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: '1234') {\n" +
+                "    sh 'echo my-content > "+folder.getRoot().getAbsolutePath()+"/test_file'\n" +
                 "  }\n" +
                 "}", true));
         WorkflowRun b = p.scheduleBuild2(0).waitForStart();
@@ -121,15 +68,13 @@ public class CacheStepTest {
 
         // THEN
         j.assertBuildStatusSuccess(b);
-        j.assertLogContains("Cache size: 209", b); // how to match with regex for whole line?
-        j.assertLogContains("WARNING: cache is larger than configured size threshold of 1 MB", b);
+        j.assertLogContains("Cache not restored (no such key found)", b);
+        j.assertLogContains("Cache saved successfully (1234)", b);
 
         // WHEN
         p.setDefinition(new CpsFlowDefinition("node {\n" +
-                "  sh 'rm "+file.getAbsolutePath()+"'\n" +
-                "  cache(folder: '"+folder.getRoot().getAbsolutePath()+"', hashFiles: '**/pom.xml', type: 'bla-foo') {\n" +
-                "    sh 'ls -alth'\n" +
-                "    sh 'ls -alth "+folder.getRoot().getAbsolutePath()+"'\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: '1234') {\n" +
+                "    sh 'cat "+folder.getRoot().getAbsolutePath()+"/test_file'\n" +
                 "  }\n" +
                 "}", true));
         b = p.scheduleBuild2(0).waitForStart();
@@ -137,32 +82,241 @@ public class CacheStepTest {
 
         // THEN
         j.assertBuildStatusSuccess(b);
-        j.assertLogContains("Cache restored from key: bla-foo-3cd7a0db76ff9dca48979e24c39b408c", b);
-        // Checks that the downloaded cache is bigger than threshold.
-        // It makes sure that the threshold can be exceeded and the file was stored.
-        j.assertLogContains("total 2.1M", b);
-        j.assertLogContains("Cache already exists (bla-foo-3cd7a0db76ff9dca48979e24c39b408c), not saving cache.", b);
+        j.assertLogContains("Cache restored successfully (1234)", b);
+        j.assertLogContains("my-content", b);
+        j.assertLogContains("Cache not saved (1234 already exists)", b);
+    }
 
-        // GIVEN
-        File pomfile = folder.newFile("pom.xml");
-        FileUtils.writeStringToFile(pomfile, "other", StandardCharsets.UTF_8);
-
+    @Test
+    public void testBackupIsSkippedOnError() throws Exception {
         // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition("node {\n" +
-                "  sh 'echo other > pom.xml'\n" +
-                "  sh 'dd if=/dev/urandom of="+file.getAbsolutePath()+" bs=1048576 count=1'\n" +
-                "  cache(folder: '"+folder.getRoot().getAbsolutePath()+"', hashFiles: '**/pom.xml', type: 'other-foo') {\n" +
-                "    sh 'ls -alth'\n" +
-                "    sh 'ls -alth "+folder.getRoot().getAbsolutePath()+"'\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'a') {\n" +
+                "    error 'Program failed, please read logs...'\n" +
                 "  }\n" +
                 "}", true));
-        b = p.scheduleBuild2(0).waitForStart();
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatus(Result.FAILURE, b);
+        j.assertLogNotContains("Cache saved successfully (a)", b);
+        j.assertLogContains("Cache not saved (inner-step execution failed)", b);
+    }
+
+    @Test
+    public void testRestoreKey() throws Exception {
+        // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-a') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-b', restoreKeys: ['cache-a']) {}\n" +
+                "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("Cache restored successfully (cache-a)", b);
+        j.assertLogContains("Cache saved successfully (cache-b)", b);
+    }
+
+    @Test
+    public void testRestoreKeyNotFound() throws Exception {
+        // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-b', restoreKeys: ['cache-a']) {}\n" +
+                "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
         j.waitForCompletion(b);
 
         // THEN
         j.assertBuildStatusSuccess(b);
         j.assertLogContains("Cache not restored (no such key found)", b);
-        // Checks that file from a different project was removed so that the new 1 MB file can be stored
-        j.assertLogContains("Cache storage exceeded size threshold, removed 1 item(s)", b);
+        j.assertLogContains("Cache saved successfully (cache-b)", b);
+    }
+
+    @Test
+    public void testRestoreKeyPrefix() throws Exception {
+        // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-a') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-b', restoreKeys: ['cac']) {}\n" +
+                "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("Cache restored successfully (cache-a)", b);
+        j.assertLogContains("Cache saved successfully (cache-b)", b);
+    }
+
+    @Test
+    public void testRestoreKeyFirstOneWins() throws Exception {
+        // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'a') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'b') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'c') {}\n" +
+                "  cache(path: '" + folder.getRoot().getAbsolutePath() + "', key: 'd', restoreKeys: ['b','a','c']) {}\n" +
+                "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("Cache restored successfully (b)", b);
+    }
+
+    @Test
+    public void testRestoreKeyExactMatchWins() throws Exception {
+        // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-a') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-b') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-c') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache', restoreKeys: ['cache-','cache-b']) {}\n" +
+                "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("Cache restored successfully (cache-b)", b);
+    }
+
+    @Test
+    public void testRestoreKeyLatestOneWins() throws Exception {
+        // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-3') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-4') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-1') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-2') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-5', restoreKeys: ['cache-']) {}\n" +
+                "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("Cache restored successfully (cache-2)", b);
+    }
+
+    @Test
+    public void testRestoreKeyIgnored() throws Exception {
+        // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-a') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-b') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: 'cache-a', restoreKeys: ['cache-b']) {}\n" +
+                "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("Cache restored successfully (cache-a)", b);
+    }
+
+    @Test
+    public void testHashFiles() throws Exception {
+        // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  sh 'echo v1 > pom.xml'\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: \"cache-${hashFiles('**/pom.xml')}\") {}\n" +
+                "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("Cache not restored (no such key found)", b);
+        j.assertLogContains("Cache saved successfully (cache-4f98f59e877ecb84ff75ef0fab45bac5)", b);
+    }
+
+    @Test
+    public void testHashFilesEmptyResult() throws Exception {
+        // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  sh 'touch workaround_workspace_not_exists'\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', key: \"cache-${hashFiles('**/pom.xml')}\") {}\n" +
+                "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("Cache not restored (no such key found)", b);
+        j.assertLogContains("Cache saved successfully (cache-d41d8cd98f00b204e9800998ecf8427e)", b);
+    }
+
+    @Test
+    public void testPathNotExists() throws Exception {
+        // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"/empty', key: 'a') {}\n" +
+                "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("Cache not restored (no such key found)", b);
+        j.assertLogContains("Cache not saved (path not exists)", b);
+    }
+
+    @Test
+    public void testPathIsFile() throws Exception {
+        // GIVEN
+        folder.newFile("test_file");
+
+        // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"/test_file', key: 'a') {}\n" +
+                "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("Cache not restored (path is not a directory)", b);
+        j.assertLogContains("Cache not saved (path is not a directory)", b);
+    }
+
+    @Test
+    public void testPathFilter() throws Exception {
+        // GIVEN
+        folder.newFile("bla.json");
+        folder.newFile("bla.xml");
+
+        // WHEN
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node {\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"', filter: '**/*.json', key: 'a') {}\n" +
+                "  cache(path: '"+folder.getRoot().getAbsolutePath()+"/restore', key: 'a') {\n" +
+                "    sh 'test -f "+folder.getRoot().getAbsolutePath()+"/restore/bla.json && echo bla.json_exists || exit 0'\n" +
+                "    sh 'test -f "+folder.getRoot().getAbsolutePath()+"/restore/bla.xml && echo bla.xml_exists || exit 0'\n" +
+                "  }\n" +
+                "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(b);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("bla.json_exists", b);
+        j.assertLogNotContains("bla.xml_exists", b);
     }
 }

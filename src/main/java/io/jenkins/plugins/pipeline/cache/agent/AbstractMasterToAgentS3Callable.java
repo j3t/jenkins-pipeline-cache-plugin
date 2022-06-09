@@ -27,7 +27,7 @@ public abstract class AbstractMasterToAgentS3Callable extends MasterToSlaveFileC
             synchronized (this) {
                 cacheItemRepository = new CacheItemRepository(
                         config.getUsername(),
-                        config.getPassword(),
+                        config.getPassword().getPlainText(),
                         config.getRegion(),
                         config.getEndpoint(),
                         config.getBucket()

@@ -15,6 +15,7 @@ import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.JenkinsRule;
 
 import hudson.model.Result;
+import hudson.util.Secret;
 
 /**
  * Checks that the cache step works as expected in pipelines. Each test starts with an empty bucket and the cache is also registered to
@@ -47,7 +48,7 @@ public class CacheStepTest {
 
         // GIVEN
         CacheConfiguration.get().setUsername(minio.accessKey());
-        CacheConfiguration.get().setPassword(minio.secretKey());
+        CacheConfiguration.get().setPassword(Secret.fromString(minio.secretKey()));
         CacheConfiguration.get().setBucket(bucket);
         CacheConfiguration.get().setRegion("us-west-1");
         CacheConfiguration.get().setEndpoint(minio.getExternalAddress());

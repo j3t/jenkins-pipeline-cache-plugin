@@ -9,6 +9,7 @@ import org.kohsuke.stapler.DataBoundSetter;
 
 import hudson.Extension;
 import hudson.ExtensionList;
+import hudson.util.Secret;
 import io.jenkins.plugins.pipeline.cache.s3.CacheItemRepository;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
@@ -26,7 +27,7 @@ public class CacheConfiguration extends GlobalConfiguration implements Serializa
     private static final long serialVersionUID = 1L;
 
     private String username;
-    private String password;
+    private Secret password;
     private String bucket;
     private String region;
     private String endpoint;
@@ -50,12 +51,12 @@ public class CacheConfiguration extends GlobalConfiguration implements Serializa
         save();
     }
 
-    public String getPassword() {
+    public Secret getPassword() {
         return password;
     }
 
     @DataBoundSetter
-    public void setPassword(String password) {
+    public void setPassword(Secret password) {
         this.password = password;
         save();
     }

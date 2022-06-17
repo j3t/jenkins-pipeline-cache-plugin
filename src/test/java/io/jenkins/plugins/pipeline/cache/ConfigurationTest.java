@@ -37,7 +37,7 @@ public class ConfigurationTest {
 
             // THEN
             assertEquals("should be editable", "alice", CacheConfiguration.get().getUsername());
-            assertEquals("should be editable", "secret", CacheConfiguration.get().getPassword());
+            assertEquals("should be editable", "secret", CacheConfiguration.get().getPassword().getPlainText());
             assertEquals("should be editable", "blue", CacheConfiguration.get().getBucket());
             assertEquals("should be editable", "dc1", CacheConfiguration.get().getRegion());
             assertEquals("should be editable", "http://localhost:9000", CacheConfiguration.get().getEndpoint());
@@ -47,7 +47,7 @@ public class ConfigurationTest {
         rr.then(r -> {
             // THEN
             assertEquals("should be still there after restart of Jenkins", "alice", CacheConfiguration.get().getUsername());
-            assertEquals("should be still there after restart of Jenkins", "secret", CacheConfiguration.get().getPassword());
+            assertEquals("should be still there after restart of Jenkins", "secret", CacheConfiguration.get().getPassword().getPlainText());
             assertEquals("should be still there after restart of Jenkins", "blue", CacheConfiguration.get().getBucket());
             assertEquals("should be still there after restart of Jenkins", "dc1", CacheConfiguration.get().getRegion());
             assertEquals("should be still there after restart of Jenkins", "http://localhost:9000", CacheConfiguration.get().getEndpoint());

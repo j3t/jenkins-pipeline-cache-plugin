@@ -42,7 +42,7 @@ public class CacheCleanupLRUJob extends AsyncPeriodicWork {
         // setup
         CacheItemRepository repo = new CacheItemRepository(
                 config.getUsername(),
-                config.getPassword(),
+                config.getPassword().getPlainText(),
                 config.getRegion(),
                 config.getEndpoint(),
                 config.getBucket()

@@ -42,7 +42,7 @@ public class CacheStepTest {
     }
 
     @Before
-    public void setupCache() throws IOException, InterruptedException {
+    public void setupCache() {
         // GIVEN
         String bucket = UUID.randomUUID().toString();
         mc.createBucket(bucket);

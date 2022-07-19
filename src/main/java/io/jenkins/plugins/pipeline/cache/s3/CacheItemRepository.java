@@ -105,26 +105,38 @@ public class CacheItemRepository {
     }
 
     /**
-     * Finds the best matching key by a given list of restoreKeys. Note, that restoreKeys doesn't have to be necessarily existing
-     * keys. They can also just be prefixes of existing keys. If there is no matching key found at all then null is returned.
+     * Finds the best matching key which can be used to restore an existing cache. It works as follows:
+     * <ol>
+     *   <li>if key exists then key is returned</li>
+     *   <li>if one of the restoreKeys exists then this one is returned</li>
+     *   <li>if an existing key starts with one of the restoreKeys then the existing key is returned</li>
+     *   <li>otherwise null is returned</li>
+     * </ol>
      */
-    public String findKeyByRestoreKeys(String... restoreKeys) {
+    public String findRestoreKey(String key, String... restoreKeys) {
+        if (key != null && exists(key)) {
+            // 1.
+            return key;
+        }
+
         if (restoreKeys == null) {
+            // 4.
             return null;
         }
 
-        // 1. try exact match
         for (String restoreKey : restoreKeys) {
             if (exists(restoreKey)) {
+                // 2.
                 return restoreKey;
             }
         }
 
-        // 2. try prefix match
         return Arrays.stream(restoreKeys)
                 .map(this::findKeyByPrefix)
                 .filter(Objects::nonNull)
+                // 3.
                 .findFirst()
+                // 4.
                 .orElse(null);
     }
 

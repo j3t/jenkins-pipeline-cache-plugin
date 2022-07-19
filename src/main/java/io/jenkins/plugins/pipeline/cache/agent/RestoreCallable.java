@@ -48,9 +48,11 @@ public class RestoreCallable extends AbstractMasterToAgentS3Callable {
         try (S3Object s3Object = cacheItemRepository().getS3Object(key);
              InputStream is = s3Object.getObjectContent()) {
             new FilePath(path).untarFrom(is, FilePath.TarCompression.NONE);
-            // update last access timestamp
-            cacheItemRepository().updateLastAccess(s3Object);
         }
+
+        // update last access timestamp
+        cacheItemRepository().updateLastAccess(key);
+
         return new ResultBuilder()
                 .withInfo(format("Cache restored successfully (%s)", key))
                 .withInfo(performanceString(key, startNanoTime))

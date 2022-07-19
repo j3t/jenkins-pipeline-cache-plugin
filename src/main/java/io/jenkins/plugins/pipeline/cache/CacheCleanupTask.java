@@ -1,4 +1,4 @@
-package io.jenkins.plugins.pipeline.cache.cleanup;
+package io.jenkins.plugins.pipeline.cache;
 
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicLong;
@@ -12,7 +12,6 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 import hudson.Extension;
 import hudson.model.AsyncPeriodicWork;
 import hudson.model.TaskListener;
-import io.jenkins.plugins.pipeline.cache.CacheConfiguration;
 import io.jenkins.plugins.pipeline.cache.s3.CacheItem;
 import io.jenkins.plugins.pipeline.cache.s3.CacheItemRepository;
 
@@ -22,12 +21,12 @@ import io.jenkins.plugins.pipeline.cache.s3.CacheItemRepository;
 @Extension
 @Restricted(NoExternalUse.class)
 @Symbol("cacheCleanupLRUJob")
-public class CacheCleanupLRUJob extends AsyncPeriodicWork {
+public class CacheCleanupTask extends AsyncPeriodicWork {
 
-    private static final Logger LOGGER = Logger.getLogger(CacheCleanupLRUJob.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(CacheCleanupTask.class.getName());
 
-    public CacheCleanupLRUJob() {
-        super("Cleanup pipeline cache");
+    public CacheCleanupTask() {
+        super("Cleanup cache items");
     }
 
     @Override

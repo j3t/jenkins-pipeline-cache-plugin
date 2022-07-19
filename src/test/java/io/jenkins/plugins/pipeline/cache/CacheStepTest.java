@@ -223,23 +223,27 @@ public class CacheStepTest {
     }
 
     @Test
-    public void testRestoreKeyMultiPrefixMatchLatestOneIsSelected() throws Exception {
+    public void testRestoreLatestOne() throws Exception {
         // GIVEN
-        WorkflowJob p = createWorkflow("node {\n" +
-                "  sh 'mkdir a && mkdir b && mkdir c && mkdir d && mkdir e'\n" +
-                "  cache(path: 'a', key: 'cache-3') {}\n" +
-                "  cache(path: 'b', key: 'cache-4') {}\n" +
-                "  cache(path: 'c', key: 'cache-1') {}\n" +
+        WorkflowJob p1 = createWorkflow("node {\n" +
+                "  sh 'mkdir a && mkdir b && mkdir c && mkdir d'\n" +
+                "  cache(path: 'a', key: 'cache-1') {}\n" +
+                "  cache(path: 'b', key: 'cache-2') {}\n" +
+                "  cache(path: 'c', key: 'cache-3') {}\n" +
                 "  cache(path: 'd', key: 'cache-2') {}\n" +
-                "  cache(path: 'e', key: 'cache-5', restoreKeys: ['cache-']) {}\n" +
+                "}");
+        WorkflowJob p2 = createWorkflow("node {\n" +
+                "  cache(path: '.', key: 'cache-4', restoreKeys: ['cache-']) {}\n" +
                 "}");
 
         // WHEN
-        WorkflowRun b = executeWorkflow(p);
+        WorkflowRun b1 = executeWorkflow(p1);
+        WorkflowRun b2 = executeWorkflow(p2);
 
         // THEN
-        j.assertBuildStatusSuccess(b);
-        j.assertLogContains("Cache restored successfully (cache-2)", b);
+        j.assertBuildStatusSuccess(b1);
+        j.assertBuildStatusSuccess(b2);
+        j.assertLogContains("Cache restored successfully (cache-3)", b2);
     }
 
     @Test

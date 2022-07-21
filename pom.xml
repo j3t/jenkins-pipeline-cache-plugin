@@ -19,7 +19,7 @@
         <java.level>8</java.level>
 
         <!-- dependency versions -->
-        <jenkins.version>2.277.1</jenkins.version>
+        <jenkins.version>2.289.3</jenkins.version>
         <jacoco-maven-plugin.version>0.8.7</jacoco-maven-plugin.version>
     </properties>
 
@@ -31,8 +31,8 @@
         <dependencies>
             <dependency>
                 <groupId>io.jenkins.tools.bom</groupId>
-                <artifactId>bom-2.277.x</artifactId>
-                <version>26</version>
+                <artifactId>bom-2.289.x</artifactId>
+                <version>1451.v15f1fdb_772a_f</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>

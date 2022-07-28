@@ -16,10 +16,12 @@ import io.jenkins.plugins.pipeline.cache.CacheConfiguration;
  * Extracts an existing tar archive from S3 to a given {@link FilePath}.
  */
 public class RestoreCallable extends AbstractMasterToAgentS3Callable {
+    private final String key;
     private final String[] restoreKeys;
 
-    public RestoreCallable(CacheConfiguration config, String... restoreKeys) {
+    public RestoreCallable(CacheConfiguration config, String key, String... restoreKeys) {
         super(config);
+        this.key = key;
         this.restoreKeys = restoreKeys;
     }
 
@@ -32,7 +34,7 @@ public class RestoreCallable extends AbstractMasterToAgentS3Callable {
                     .build();
         }
 
-        String key = cacheItemRepository().findKeyByRestoreKeys(restoreKeys);
+        String key = cacheItemRepository().findRestoreKey(this.key, restoreKeys);
 
         // make sure that the cache exists
         if (key == null) {
@@ -46,9 +48,11 @@ public class RestoreCallable extends AbstractMasterToAgentS3Callable {
         try (S3Object s3Object = cacheItemRepository().getS3Object(key);
              InputStream is = s3Object.getObjectContent()) {
             new FilePath(path).untarFrom(is, FilePath.TarCompression.NONE);
-            // update last access timestamp
-            cacheItemRepository().updateLastAccess(s3Object);
         }
+
+        // update last access timestamp
+        cacheItemRepository().updateLastAccess(key);
+
         return new ResultBuilder()
                 .withInfo(format("Cache restored successfully (%s)", key))
                 .withInfo(performanceString(key, startNanoTime))

@@ -56,6 +56,7 @@ public class BackupCallable extends AbstractMasterToAgentS3Callable {
         try (OutputStream out = cacheItemRepository().createObjectOutputStream(key)) {
             new FilePath(path).tar(out, filter);
         }
+
         return new ResultBuilder()
                 .withInfo(format("Cache saved successfully (%s)", key))
                 .withInfo(performanceString(key, start))

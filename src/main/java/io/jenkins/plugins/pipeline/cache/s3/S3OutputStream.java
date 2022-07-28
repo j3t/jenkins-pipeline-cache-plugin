@@ -1,12 +1,14 @@
 package io.jenkins.plugins.pipeline.cache.s3;
 
+import static io.jenkins.plugins.pipeline.cache.s3.CacheItemRepository.CREATION;
+import static io.jenkins.plugins.pipeline.cache.s3.CacheItemRepository.LAST_ACCESS;
+
 import java.io.ByteArrayInputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.CompleteMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadResult;
@@ -17,166 +19,174 @@ import com.amazonaws.services.s3.model.UploadPartRequest;
 import com.amazonaws.services.s3.model.UploadPartResult;
 
 /**
- * {@link OutputStream} which allows writing an object to S3 directly. Heavily inspired by
- * https://gist.github.com/blagerweij/ad1dbb7ee2fff8bcffd372815ad310eb.
+ * {@link OutputStream} which allows writing an object to S3 directly. If the content size is not greater than 10 MB then it is uploaded at
+ * once, otherwise in chunks (default: 10 MB).
  */
 public class S3OutputStream extends OutputStream {
 
     /**
-     * Default chunk size is 5MB
+     * Buffer size (default: 10 MB, minimum: 5 MB).
      */
-    protected static final int BUFFER_SIZE = 5*1024*1024;
+    public static final int BUFFER_SIZE = 1024 * 1024 * 10;
 
     /**
-     * The bucket-name on Amazon S3
+     * S3 client which is used to upload the content.
+     */
+    private final AmazonS3 s3;
+
+    /**
+     * Name of the bucket where the object is stored.
      */
     private final String bucket;
 
     /**
-     * The path (key) name within the bucket
+     * Key which is assigned to the object within the bucket.
      */
-    private final String path;
+    private final String key;
 
     /**
-     * The temporary buffer used for storing the chunks
+     * The internal buffer where data is stored.
      */
-    private final byte[] buf;
-    /**
-     * Amazon S3 client.
-     */
-    private final AmazonS3 s3Client;
-    /**
-     * Collection of the etags for the parts that have been uploaded
-     */
-    private final List<PartETag> etags;
-    /**
-     * The position in the buffer
-     */
-    private int position;
-    /**
-     * The unique id for this upload
-     */
-    private String uploadId;
-    /**
-     * indicates whether the stream is still open / valid
-     */
-    private boolean open;
+    protected byte[] buf;
 
     /**
-     * Creates a new S3 OutputStream
-     *
-     * @param s3Client the AmazonS3 client
-     * @param bucket   name of the bucket
-     * @param path     path within the bucket
+     * The number of valid bytes in the buffer. This value is always
+     * in the range <tt>0</tt> through <tt>buf.length</tt>; elements
+     * <tt>buf[0]</tt> through <tt>buf[count-1]</tt> contain valid
+     * byte data.
      */
-    public S3OutputStream(AmazonS3 s3Client, String bucket, String path) {
-        this.s3Client = s3Client;
+    protected int count;
+
+    /**
+     * Holds the part IDs in case of a multipart upload.
+     */
+    protected List<PartETag> partIDs = new ArrayList<>();
+
+    /**
+     * true indicates that the stream is still open, otherwise false.
+     */
+    protected boolean open = true;
+
+    /**
+     * Holds the result of the initial upload in case of a multipart upload.
+     */
+    private InitiateMultipartUploadResult multipartUpload;
+
+    /**
+     * Creates a new buffered output stream to write data to S3.
+     * @param s3 the AmazonS3 client
+     * @param bucket name of the bucket
+     * @param key key of the object within the bucket
+     */
+    public S3OutputStream(AmazonS3 s3, String bucket, String key) {
+        this(s3, bucket, key, BUFFER_SIZE);
+    }
+
+    /**
+     * Creates a new buffered output stream to write data to S3.
+     * @param s3 the AmazonS3 client
+     * @param bucket name of the bucket
+     * @param key key of the object within the bucket
+     * @param size size of the buffer
+     */
+    public S3OutputStream(AmazonS3 s3, String bucket, String key, int size) {
+        if (size <= 0) {
+            throw new IllegalArgumentException("Buffer size <= 0");
+        }
+        this.s3 = s3;
         this.bucket = bucket;
-        this.path = path;
-        this.buf = new byte[BUFFER_SIZE];
-        this.position = 0;
-        this.etags = new ArrayList<>();
-        this.open = true;
+        this.key = key;
+        this.buf = new byte[size];
     }
 
     /**
-     * Write an array to the S3 output stream.
+     * Writes the specified byte to this buffered output stream.
      *
-     * @param b the byte-array to append
+     * @param b the byte to be written.
      */
-    @Override
-    public void write(byte[] b) {
-        write(b, 0, b.length);
+    public synchronized void write(int b) {
+        if (count >= buf.length) {
+            flushAndReset();
+        }
+        buf[count++] = (byte)b;
     }
 
     /**
-     * Writes an array to the S3 Output Stream
-     *
-     * @param byteArray the array to write
-     * @param o         the offset into the array
-     * @param l         the number of bytes to write
+     * Writes <code>len</code> bytes from the specified byte array
+     * starting at offset <code>off</code> to this buffered output stream.
+     * @param b the data.
+     * @param off the start offset in the data.
+     * @param len the number of bytes to write.
      */
-    @Override
-    public void write(final byte[] byteArray, final int o, final int l) {
-        this.assertOpen();
-        int ofs = o, len = l;
-        int size;
-        while (len > (size = this.buf.length - position)) {
-            System.arraycopy(byteArray, ofs, this.buf, this.position, size);
-            this.position += size;
-            flushBufferAndRewind();
-            ofs += size;
+    public synchronized void write(byte[] b, int off, int len) {
+        while (count + len > buf.length) {
+            int size = buf.length - count;
+            System.arraycopy(b, off, buf, count, size);
+            off += size;
             len -= size;
+            count += size;
+            flushAndReset();
         }
-        System.arraycopy(byteArray, ofs, this.buf, this.position, len);
-        this.position += len;
+        System.arraycopy(b, off, buf, count, len);
+        count += len;
     }
 
-    /**
-     * Flushes the buffer by uploading a part to S3.
-     */
-    @Override
-    public synchronized void flush() {
-        this.assertOpen();
-    }
-
-    protected void flushBufferAndRewind() {
-        if (uploadId == null) {
-            ObjectMetadata metadata = new ObjectMetadata();
-            CacheItemRepository.updateLastAccess(metadata);
-            final InitiateMultipartUploadRequest request = new InitiateMultipartUploadRequest(this.bucket, this.path)
-                    .withCannedACL(CannedAccessControlList.BucketOwnerFullControl)
-                    .withObjectMetadata(metadata);
-            InitiateMultipartUploadResult initResponse = s3Client.initiateMultipartUpload(request);
-            this.uploadId = initResponse.getUploadId();
+    private void flushAndReset() {
+        if (count <= 0) {
+            return;
         }
-        uploadPart();
-        this.position = 0;
-    }
 
-    protected void uploadPart() {
-        UploadPartResult uploadResult = this.s3Client.uploadPart(new UploadPartRequest()
-                .withBucketName(this.bucket)
-                .withKey(this.path)
-                .withUploadId(this.uploadId)
-                .withInputStream(new ByteArrayInputStream(buf, 0, this.position))
-                .withPartNumber(this.etags.size() + 1)
-                .withPartSize(this.position));
-        this.etags.add(uploadResult.getPartETag());
+        if (multipartUpload == null) {
+            // initialize partial upload
+            multipartUpload = s3.initiateMultipartUpload(new InitiateMultipartUploadRequest(bucket, key)
+                    .withObjectMetadata(createMetadata(true)));
+        }
+
+        // upload part
+        UploadPartResult uploadResult = s3.uploadPart(new UploadPartRequest()
+                .withBucketName(bucket)
+                .withKey(key)
+                .withUploadId(multipartUpload.getUploadId())
+                .withInputStream(new ByteArrayInputStream(buf, 0, count))
+                .withPartNumber(partIDs.size() + 1)
+                .withPartSize(count));
+
+        // store part ID (required for the final step)
+        partIDs.add(uploadResult.getPartETag());
+
+        // reset count
+        count = 0;
     }
 
     @Override
     public void close() {
-        if (this.open) {
-            this.open = false;
-            if (this.uploadId != null) {
-                if (this.position > 0) {
-                    uploadPart();
-                }
-                this.s3Client.completeMultipartUpload(new CompleteMultipartUploadRequest(bucket, path, uploadId, etags));
-            } else {
-                final ObjectMetadata metadata = new ObjectMetadata();
-                metadata.setContentLength(this.position);
-                final PutObjectRequest request =
-                        new PutObjectRequest(this.bucket, this.path, new ByteArrayInputStream(this.buf, 0, this.position), metadata)
-                                .withCannedAcl(CannedAccessControlList.BucketOwnerFullControl);
-                this.s3Client.putObject(request);
-            }
+        if (!open) {
+            return;
+        }
+        open = false;
+
+        // complete partial upload
+        if (multipartUpload != null) {
+            flushAndReset();
+            s3.completeMultipartUpload(new CompleteMultipartUploadRequest(bucket, key, multipartUpload.getUploadId(), partIDs));
+        }
+
+        // or upload content at once (content <= buffer size)
+        else {
+            s3.putObject(new PutObjectRequest(bucket, key, new ByteArrayInputStream(buf, 0, count), createMetadata(false)));
         }
     }
 
-    @Override
-    public void write(int b) {
-        this.assertOpen();
-        if (position >= this.buf.length) {
-            flushBufferAndRewind();
+    private ObjectMetadata createMetadata(boolean multipart) {
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.addUserMetadata(CREATION, Long.toString(System.currentTimeMillis()));
+        metadata.addUserMetadata(LAST_ACCESS, Long.toString(System.currentTimeMillis()));
+
+        if (!multipart) {
+            metadata.setContentLength(count);
         }
-        this.buf[position++] = (byte) b;
+
+        return metadata;
     }
 
-    private void assertOpen() {
-        if (!this.open) {
-            throw new IllegalStateException("Closed");
-        }
-    }
 }

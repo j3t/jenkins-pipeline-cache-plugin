@@ -91,7 +91,7 @@ public class CacheItemRepository {
 
     /**
      * Updates the last access timestamp of a given cache item by key. <b>Note: As a side effect this also changes the last modification
-     * timestamp, which means that last modification and last access can be considered as equals/b>
+     * timestamp, which means that last modification and last access can be considered as equals</b>
      */
     public void updateLastAccess(String key) {
         ObjectMetadata metadata = s3.getObjectMetadata(bucket, key);

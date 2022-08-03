@@ -369,6 +369,39 @@ public class CacheStepTest {
         j.assertBuildStatusSuccess(b);
     }
 
+    @Test
+    public void testDefaultExcludes() throws Exception {
+        // GIVEN
+        WorkflowJob p = createWorkflow("node {\n" +
+                "  sh 'mkdir -p a/.git && touch a/.git/config'\n" +
+                "  cache(path: 'a', key: 'a') {}\n" +
+                "  cache(path: 'b', key: 'a') {}\n" +
+                "  assert !fileExists('b/.git/config')\n" +
+                "}");
+
+        // WHEN
+        WorkflowRun b = executeWorkflow(p);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+    }
+
+    @Test
+    public void testDefaultExcludesIgnoredWhenFilterIsActive() throws Exception {
+        // GIVEN
+        WorkflowJob p = createWorkflow("node {\n" +
+                "  sh 'mkdir -p a/.git && touch a/.git/config'\n" +
+                "  cache(path: 'a', key: 'a', filter: '**/*') {}\n" +
+                "  cache(path: 'b', key: 'a') {}\n" +
+                "  assert fileExists('b/.git/config')\n" +
+                "}");
+
+        // WHEN
+        WorkflowRun b = executeWorkflow(p);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+    }
 
     private WorkflowJob createWorkflow(String script) throws IOException {
         WorkflowJob p = j.createProject(WorkflowJob.class);

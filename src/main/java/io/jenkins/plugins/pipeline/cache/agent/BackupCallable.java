@@ -8,6 +8,7 @@ import java.io.OutputStream;
 
 import hudson.FilePath;
 import hudson.remoting.VirtualChannel;
+import hudson.util.DirScanner;
 import io.jenkins.plugins.pipeline.cache.CacheConfiguration;
 
 /**
@@ -16,6 +17,7 @@ import io.jenkins.plugins.pipeline.cache.CacheConfiguration;
 public class BackupCallable extends AbstractMasterToAgentS3Callable {
     private final String key;
     private final String filter;
+    private final boolean defaultExcludes;
 
     /**
      * @param config S3 instance and bucket name
@@ -25,7 +27,8 @@ public class BackupCallable extends AbstractMasterToAgentS3Callable {
     public BackupCallable(CacheConfiguration config, String key, String filter) {
         super(config);
         this.key = key;
-        this.filter = filter == null || filter.isEmpty() ? "**/*" : filter;
+        this.filter = filter == null ? "**/*" : filter;
+        this.defaultExcludes = filter == null;
     }
 
     @Override
@@ -54,7 +57,7 @@ public class BackupCallable extends AbstractMasterToAgentS3Callable {
         // do backup
         long start = System.nanoTime();
         try (OutputStream out = cacheItemRepository().createObjectOutputStream(key)) {
-            new FilePath(path).tar(out, filter);
+            new FilePath(path).tar(out, new DirScanner.Glob(filter,null, defaultExcludes));
         }
 
         return new ResultBuilder()

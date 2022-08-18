@@ -4,6 +4,7 @@ import static java.util.stream.Stream.concat;
 
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -145,10 +146,11 @@ public class CacheItemRepository {
     }
 
     /**
-     * Creates an {@link java.io.OutputStream} for a given key. This can be used to write data directly to a new object in S3.
+     * Creates an {@link java.io.OutputStream} for a given key. This can be used to write data directly to a new object in S3. Note that
+     * the md5 must be provided as 32 character string and not as a hex value.
      */
-    public OutputStream createObjectOutputStream(String key) {
-        return new S3OutputStream(s3, bucket, key);
+    public OutputStream createObjectOutputStream(String key, byte[] md5) {
+        return new S3OutputStream(s3, bucket, key, Base64.getEncoder().encodeToString(md5));
     }
 
     /**

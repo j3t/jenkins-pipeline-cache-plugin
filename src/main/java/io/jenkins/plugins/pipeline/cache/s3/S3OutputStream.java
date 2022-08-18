@@ -40,9 +40,15 @@ public class S3OutputStream extends OutputStream {
     private final String bucket;
 
     /**
-     * Key which is assigned to the object within the bucket.
+     * Key which will be assigned to the object.
      */
     private final String key;
+
+    /**
+     * MD5 checksum of the object.
+     * @see ObjectMetadata#setContentMD5(String)
+     */
+    private final String md5;
 
     /**
      * The internal buffer where data is stored.
@@ -77,9 +83,10 @@ public class S3OutputStream extends OutputStream {
      * @param s3 the AmazonS3 client
      * @param bucket name of the bucket
      * @param key key of the object within the bucket
+     * @param md5 MD5 checksum of the object (128bit, base64 encoded)
      */
-    public S3OutputStream(AmazonS3 s3, String bucket, String key) {
-        this(s3, bucket, key, BUFFER_SIZE);
+    public S3OutputStream(AmazonS3 s3, String bucket, String key, String md5) {
+        this(s3, bucket, key, md5, BUFFER_SIZE);
     }
 
     /**
@@ -87,15 +94,17 @@ public class S3OutputStream extends OutputStream {
      * @param s3 the AmazonS3 client
      * @param bucket name of the bucket
      * @param key key of the object within the bucket
+     * @param md5 MD5 checksum of the object (128bit, base64 encoded)
      * @param size size of the buffer
      */
-    public S3OutputStream(AmazonS3 s3, String bucket, String key, int size) {
+    public S3OutputStream(AmazonS3 s3, String bucket, String key, String md5, int size) {
         if (size <= 0) {
             throw new IllegalArgumentException("Buffer size <= 0");
         }
         this.s3 = s3;
         this.bucket = bucket;
         this.key = key;
+        this.md5 = md5;
         this.buf = new byte[size];
     }
 
@@ -179,6 +188,7 @@ public class S3OutputStream extends OutputStream {
 
     private ObjectMetadata createMetadata(boolean multipart) {
         ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentMD5(md5);
         metadata.addUserMetadata(CREATION, Long.toString(System.currentTimeMillis()));
         metadata.addUserMetadata(LAST_ACCESS, Long.toString(System.currentTimeMillis()));
 

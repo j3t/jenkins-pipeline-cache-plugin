@@ -9,6 +9,11 @@ The primary goal is to have a file cache for so called `hot agent nodes`. Those 
 * Download the latest version (see [releases](https://github.com/j3t/jenkins-pipeline-cache-plugin/releases))
 * Complete the installation via `Manage Jenkins -> Manage Plugins -> Advanced -> Upload Plugin`
 
+For automated installations via `plugin.txt` you can use an entry like below:
+```
+jenkins-pipeline-cache::https://github.com/j3t/jenkins-pipeline-cache-plugin/releases/download/0.1.5/jenkins-pipeline-cache-0.1.5.hpi
+```
+
 # Configuration
 * Go to `Manage Jenkins -> Configure System -> Cache Plugin`
 * Set `Username` (aka S3-Access-Key)

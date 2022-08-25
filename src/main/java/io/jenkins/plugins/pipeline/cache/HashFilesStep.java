@@ -1,19 +1,18 @@
 package io.jenkins.plugins.pipeline.cache;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.SequenceInputStream;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.collections.IteratorUtils;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
@@ -65,7 +64,7 @@ public class HashFilesStep extends Step {
 
         @Override
         public String getDisplayName() {
-            return "Hashes files in the workspace";
+            return "Hash files within the workspace";
         }
     }
 
@@ -94,20 +93,24 @@ public class HashFilesStep extends Step {
 
             @Override
             public String invoke(File f, VirtualChannel channel) throws IOException {
-                PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
-                Stream<FileInputStream> streams = Files.walk(Paths.get(f.toURI()))
-                        .filter(pathMatcher::matches)
-                        .sorted()
-                        .map(path -> {
-                            try {
-                                return new FileInputStream(path.toFile());
-                            } catch (FileNotFoundException e) {
-                                throw new IllegalStateException(e);
-                            }
-                        });
+                PathMatcher filter = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
+                MessageDigest checksum = DigestUtils.getMd5Digest();
 
-                try (SequenceInputStream sequenceInputStream = new SequenceInputStream(IteratorUtils.asEnumeration(streams.iterator()))) {
-                    return DigestUtils.md5Hex(sequenceInputStream);
+                try (Stream<Path> files = Files.walk(Paths.get(f.toURI()))) {
+                    files
+                            .filter(filter::matches)
+                            .sorted()
+                            .forEach(path -> updateChecksum(checksum, path));
+
+                    return Hex.encodeHexString(checksum.digest());
+                }
+            }
+
+            private void updateChecksum(MessageDigest checksum, Path path) {
+                try {
+                    DigestUtils.updateDigest(checksum, path);
+                } catch (IOException e) {
+                    throw new IllegalStateException("Update checksum has been failed!", e);
                 }
             }
         }

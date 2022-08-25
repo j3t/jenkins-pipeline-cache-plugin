@@ -26,7 +26,7 @@ import hudson.Extension;
 import hudson.FilePath;
 import hudson.model.TaskListener;
 import hudson.remoting.VirtualChannel;
-import jenkins.SlaveToMasterFileCallable;
+import jenkins.MasterToSlaveFileCallable;
 
 /**
  * Handles 'hashFiles' step executions. For example, <b>hashFiles('**&#47;pom.xml')</b> will create a hash over all pom files in the
@@ -83,7 +83,7 @@ public class HashFilesStep extends Step {
             return workspace.act(new HashFilesStepExecution.HashFilesCallable(pattern));
         }
 
-        private static class HashFilesCallable extends SlaveToMasterFileCallable<String> {
+        private static class HashFilesCallable extends MasterToSlaveFileCallable<String> {
 
             private final String pattern;
 

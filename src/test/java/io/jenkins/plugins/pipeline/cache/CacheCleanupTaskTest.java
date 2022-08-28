@@ -60,7 +60,7 @@ public class CacheCleanupTaskTest {
     public void testThresholdNotReached() {
         // GIVEN
         CacheConfiguration.get().setThreshold(2);
-        String key = createCacheItem(1);
+        String key = createCacheItem();
 
         // WHEN
         new CacheCleanupTask().execute(StreamTaskListener.fromStdout());
@@ -73,7 +73,7 @@ public class CacheCleanupTaskTest {
     public void testThresholdReached() {
         // GIVEN
         CacheConfiguration.get().setThreshold(1);
-        String key = createCacheItem(1);
+        String key = createCacheItem();
 
         // WHEN
         new CacheCleanupTask().execute(StreamTaskListener.fromStdout());
@@ -86,13 +86,13 @@ public class CacheCleanupTaskTest {
      * Checks that cache items are removed in the order they are created if they are not restored yet (the oldest one first).
      */
     @Test
-    public void testCacheItemsAreNotRestoredYet() {
+    public void testCleanupOfNotRestoredCacheItems() {
         // GIVEN threshold: 5MB
         CacheConfiguration.get().setThreshold(5);
 
         // GIVEN 10 cache items (each ~1.1MB)
         List<String> keys = range(0, 10)
-                .mapToObj(i -> createCacheItem(1))
+                .mapToObj(i -> createCacheItem())
                 .collect(toList());
 
         // WHEN
@@ -106,18 +106,18 @@ public class CacheCleanupTaskTest {
      * Checks that cache items are removed as expected (the last recently used ones first).
      */
     @Test
-    public void testCacheItemsAreRestoredAtLestOnce() {
+    public void testCleanupOfRestoredCacheItems() {
         // GIVEN threshold 5MB
         CacheConfiguration.get().setThreshold(5);
 
         // GIVEN 10 cache items (each ~1.1MB)
         List<String> keys = range(0, 10)
-                .mapToObj(i -> createCacheItem(1))
+                .mapToObj(i -> createCacheItem())
                 .collect(toList());
 
         // GIVEN cache items are restored in random order
         Collections.shuffle(keys);
-        keys.forEach(this::useCacheItem);
+        keys.forEach(this::restoreCacheItem);
 
         // WHEN
         new CacheCleanupTask().execute(StreamTaskListener.fromStdout());
@@ -126,20 +126,20 @@ public class CacheCleanupTaskTest {
         assertThat(range(0, 10).filter(i -> mc.containsKey(bucket, keys.get(i))).toArray(), is(new int[]{6, 7, 8, 9}));
     }
 
-    private String createCacheItem(int sizeInMB) {
+    private String createCacheItem() {
         try {
-            return createCacheItemSecure(sizeInMB, UUID.randomUUID().toString());
+            return createCacheItemSecure(UUID.randomUUID().toString());
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
 
     }
 
-    private String createCacheItemSecure(int sizeInMB, String key) throws Exception {
+    private String createCacheItemSecure(String key) throws Exception {
         WorkflowJob job = j.createProject(WorkflowJob.class);
         job.setDefinition(new CpsFlowDefinition("node {\n" +
-                "  cache(path: '.', key: '" + key + "'){\n" +
-                "    sh 'dd if=/dev/urandom of=file1 bs=1048576 count=" + sizeInMB + "'\n" +
+                "  fileCache(path: '.', key: '" + key + "'){\n" +
+                "    sh 'dd if=/dev/urandom of=file1 bs=1048576 count=1'\n" +
                 "  }\n" +
                 "}", true));
 
@@ -151,18 +151,18 @@ public class CacheCleanupTaskTest {
         return key;
     }
 
-    private String useCacheItem(String key) {
+    private void restoreCacheItem(String key) {
         try {
-            return useCacheItemSecure(key);
+            restoreCacheItemSecure(key);
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
     }
 
-    private String useCacheItemSecure(String key) throws Exception {
+    private void restoreCacheItemSecure(String key) throws Exception {
         WorkflowJob job = j.createProject(WorkflowJob.class);
         job.setDefinition(new CpsFlowDefinition("node {\n" +
-                "  cache(path: '.', key: '" + key + "'){\n" +
+                "  fileCache(path: '.', key: '" + key + "'){\n" +
                 "  }\n" +
                 "}", true));
 
@@ -170,8 +170,6 @@ public class CacheCleanupTaskTest {
         WorkflowRun result = job.scheduleBuild2(0).waitForStart();
         j.waitForCompletion(result);
         j.assertBuildStatusSuccess(result);
-
-        return key;
     }
 
 }

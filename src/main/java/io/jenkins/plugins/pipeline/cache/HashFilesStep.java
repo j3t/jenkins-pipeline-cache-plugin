@@ -29,8 +29,8 @@ import hudson.remoting.VirtualChannel;
 import jenkins.MasterToSlaveFileCallable;
 
 /**
- * Handles 'hashFiles' step executions. For example, <b>hashFiles('**&#47;pom.xml')</b> will create a hash over all pom files in the
- * workspace. If there are no matching files at all then d41d8cd98f00b204e9800998ecf8427e is returned (md5 hash of an empty string).
+ * Handles 'hashFiles' step executions. For example, <b>hashFiles('**&#47;pom.xml')</b> will create a hash over all pom files within the
+ * working directory. If there are no matching files, then d41d8cd98f00b204e9800998ecf8427e is returned (md5 of an empty string).
  */
 public class HashFilesStep extends Step {
 
@@ -64,7 +64,7 @@ public class HashFilesStep extends Step {
 
         @Override
         public String getDisplayName() {
-            return "Hash files within the workspace";
+            return "Hash files within the working directory";
         }
     }
 
@@ -78,9 +78,9 @@ public class HashFilesStep extends Step {
 
         @Override
         protected String run() throws Exception {
-            FilePath workspace = getContext().get(FilePath.class);
+            FilePath workdir = getContext().get(FilePath.class);
 
-            return workspace.act(new HashFilesStepExecution.HashFilesCallable(pattern));
+            return workdir.act(new HashFilesStepExecution.HashFilesCallable(pattern));
         }
 
         private static class HashFilesCallable extends MasterToSlaveFileCallable<String> {
@@ -92,11 +92,11 @@ public class HashFilesStep extends Step {
             }
 
             @Override
-            public String invoke(File f, VirtualChannel channel) throws IOException {
+            public String invoke(File workdir, VirtualChannel channel) throws IOException {
                 PathMatcher filter = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
                 MessageDigest checksum = DigestUtils.getMd5Digest();
 
-                try (Stream<Path> files = Files.walk(Paths.get(f.toURI()))) {
+                try (Stream<Path> files = Files.walk(Paths.get(workdir.toURI()))) {
                     files
                             .filter(filter::matches)
                             .sorted()

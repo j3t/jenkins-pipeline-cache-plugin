@@ -1,19 +1,18 @@
 package io.jenkins.plugins.pipeline.cache;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.SequenceInputStream;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.collections.IteratorUtils;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
@@ -27,11 +26,11 @@ import hudson.Extension;
 import hudson.FilePath;
 import hudson.model.TaskListener;
 import hudson.remoting.VirtualChannel;
-import jenkins.SlaveToMasterFileCallable;
+import jenkins.MasterToSlaveFileCallable;
 
 /**
- * Handles 'hashFiles' step executions. For example, <b>hashFiles('**&#47;pom.xml')</b> will create a hash over all pom files in the
- * workspace. If there are no matching files at all then d41d8cd98f00b204e9800998ecf8427e is returned (md5 hash of an empty string).
+ * Handles 'hashFiles' step executions. For example, <b>hashFiles('**&#47;pom.xml')</b> will create a hash over all pom files within the
+ * working directory. If there are no matching files, then d41d8cd98f00b204e9800998ecf8427e is returned (md5 of an empty string).
  */
 public class HashFilesStep extends Step {
 
@@ -65,7 +64,7 @@ public class HashFilesStep extends Step {
 
         @Override
         public String getDisplayName() {
-            return "Hashes files in the workspace";
+            return "Hash files within the working directory";
         }
     }
 
@@ -79,12 +78,12 @@ public class HashFilesStep extends Step {
 
         @Override
         protected String run() throws Exception {
-            FilePath workspace = getContext().get(FilePath.class);
+            FilePath workdir = getContext().get(FilePath.class);
 
-            return workspace.act(new HashFilesStepExecution.HashFilesCallable(pattern));
+            return workdir.act(new HashFilesStepExecution.HashFilesCallable(pattern));
         }
 
-        private static class HashFilesCallable extends SlaveToMasterFileCallable<String> {
+        private static class HashFilesCallable extends MasterToSlaveFileCallable<String> {
 
             private final String pattern;
 
@@ -93,21 +92,25 @@ public class HashFilesStep extends Step {
             }
 
             @Override
-            public String invoke(File f, VirtualChannel channel) throws IOException {
-                PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
-                Stream<FileInputStream> streams = Files.walk(Paths.get(f.toURI()))
-                        .filter(pathMatcher::matches)
-                        .sorted()
-                        .map(path -> {
-                            try {
-                                return new FileInputStream(path.toFile());
-                            } catch (FileNotFoundException e) {
-                                throw new IllegalStateException(e);
-                            }
-                        });
+            public String invoke(File workdir, VirtualChannel channel) throws IOException {
+                PathMatcher filter = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
+                MessageDigest checksum = DigestUtils.getMd5Digest();
 
-                try (SequenceInputStream sequenceInputStream = new SequenceInputStream(IteratorUtils.asEnumeration(streams.iterator()))) {
-                    return DigestUtils.md5Hex(sequenceInputStream);
+                try (Stream<Path> files = Files.walk(Paths.get(workdir.toURI()))) {
+                    files
+                            .filter(filter::matches)
+                            .sorted()
+                            .forEach(path -> updateChecksum(checksum, path));
+
+                    return Hex.encodeHexString(checksum.digest());
+                }
+            }
+
+            private void updateChecksum(MessageDigest checksum, Path path) {
+                try {
+                    DigestUtils.updateDigest(checksum, path);
+                } catch (IOException e) {
+                    throw new IllegalStateException("Update checksum has been failed!", e);
                 }
             }
         }

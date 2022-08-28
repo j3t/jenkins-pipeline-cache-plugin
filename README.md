@@ -15,7 +15,7 @@ jenkins-pipeline-cache::https://github.com/j3t/jenkins-pipeline-cache-plugin/rel
 ```
 
 # Configuration
-* Go to `Manage Jenkins -> Configure System -> Cache Plugin`
+* Go to `Manage Jenkins -> Configure System -> File Cache Plugin`
 * Set `Username` (aka S3-Access-Key)
 * Set `Password` (aka S3-Secret-Key)
 * Set `Bucket`
@@ -34,7 +34,7 @@ Below you can find an example where the local maven repository of the [spring-pe
 ```
 node {
     git(url: 'https://github.com/spring-projects/spring-petclinic', branch: 'main')
-    cache(path: "$HOME/.m2/repository", key: "petclinic-${hashFiles('**/pom.xml')}") {
+    fileCache(path: "$HOME/.m2/repository", key: "petclinic-${hashFiles('**/pom.xml')}") {
         sh './mvnw package'
     }
 }
@@ -45,7 +45,7 @@ The `hashFiles` method is optional but can be helpful to generate more precise k
 
 If the job gets executed, the plugin tries to restore the maven repository from the cache by using the given `key`. Then the inner-step gets executed and if this was successful and the cache doesn't exist yet then the `path` gets cached.
 
-Below you can find a complete list of the `cache` step parameters:
+Below you can find a complete list of the `fileCache` step parameters:
 
 | Name        | Required | Description                                                                                                                                                                                                                                         | Default                                                                                                    | Example                                                                                                                          |
 |-------------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
@@ -76,7 +76,7 @@ As a general advice, sensitive data or data which cannot be restored from somewh
 * the `hashFiles` step expects a [Glob](https://docs.oracle.com/javase/tutorial/essential/io/fileOps.html#glob) pattern relative to the workspace as parameter
 * the `filter` parameter must be a [Glob](https://docs.oracle.com/javase/tutorial/essential/io/fileOps.html#glob) pattern relative to the `path`
 * if the `filter` parameter is not empty then the [default excludes](https://ant.apache.org/manual/dirtasks.html#defaultexcludes) are disabled as well
-* the cache gets not stored if the `key` already exists or the inner-step has been failed (e.g. unit-test failures)
+* the cache is not stored if the `key` already exists or the inner-step has been failed (e.g. unit-test failures)
 * existing files are replaced but not removed when the cache gets restored
 * the plugin creates a tar archive from the path and stores it as an S3 object
 * the S3 object contains metadata
@@ -84,6 +84,6 @@ As a general advice, sensitive data or data which cannot be restored from somewh
   * LAST_ACCESS - Unix time is ms when the cache was accessed last
 
 # Further reading
-* [CacheStep.java](./src/main/java/io/jenkins/plugins/pipeline/cache/CacheStep.java) - implements the `cache` pipeline step
-* [CacheStepTest](./src/test/java/io/jenkins/plugins/pipeline/cache/CacheStepTest.java) - checks that the cache pipeline step works as expected
+* [FileCacheStep](./src/main/java/io/jenkins/plugins/pipeline/cache/FileCacheStep.java) - implements the `fileCache` pipeline step
+* [FileCacheStepTest](./src/test/java/io/jenkins/plugins/pipeline/cache/FileCacheStepTest.java) - checks that the `fileCache` pipeline step works as expected
 * [HashFilesStep](./src/main/java/io/jenkins/plugins/pipeline/cache/HashFilesStep.java) - implements the `hashFiles` pipeline step

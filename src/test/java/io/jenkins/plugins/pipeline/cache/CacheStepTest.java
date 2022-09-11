@@ -403,6 +403,34 @@ public class CacheStepTest {
         j.assertBuildStatusSuccess(b);
     }
 
+    @Test
+    public void testDeclarativePipeline() throws Exception {
+        // GIVEN
+        WorkflowJob p = createWorkflow("pipeline {\n"
+                + "  agent any\n"
+                + "  stages {\n"
+                + "    stage('Test') {\n"
+                + "      steps {\n"
+                + "        sh 'mkdir a && mkdir b'\n"
+                + "        cache(path: 'a', key: '1234') {\n"
+                + "          sh 'echo bla > a/foo'\n"
+                + "        }\n"
+                + "        cache(path: 'b', key: '1234') {\n"
+                + "          println \"b/foo contains ${readFile('b/foo')}\"\n"
+                + "        }\n"
+                + "      }\n"
+                + "    }\n"
+                + "  }\n"
+                + "}\n");
+
+        // WHEN
+        WorkflowRun b = executeWorkflow(p);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+        j.assertLogContains("b/foo contains bla", b);
+    }
+
     private WorkflowJob createWorkflow(String script) throws IOException {
         WorkflowJob p = j.createProject(WorkflowJob.class);
         p.setDefinition(new CpsFlowDefinition(script, true));

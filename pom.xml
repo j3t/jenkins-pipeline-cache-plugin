@@ -79,6 +79,14 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <!-- required for declarative pipeline tests -->
+            <groupId>org.jenkins-ci.plugins.workflow</groupId>
+            <artifactId>workflow-aggregator</artifactId>
+            <version>2.7</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- provides sha256 utility step -->
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>pipeline-utility-steps</artifactId>
             <version>2.13.0</version>

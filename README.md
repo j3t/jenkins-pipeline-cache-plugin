@@ -1,5 +1,7 @@
 [![CI](https://github.com/j3t/jenkins-pipeline-cache-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/j3t/jenkins-pipeline-cache-plugin/actions/workflows/ci.yml)
 
+> **WARNING**: Starting with 0.2.0, the *cache* step is replaced by the *fileCache* step. The *cache* step is still working, but you will get a warning (see https://github.com/j3t/jenkins-pipeline-cache-plugin/issues/20).
+
 A cloud native file cache for Jenkins pipelines. The files are stored in a S3-Bucket. The functionality is very similar to the one provided by [GitHub Actions](https://docs.github.com/en/actions/advanced-guides/caching-dependencies-to-speed-up-workflows).
 
 # Motivation

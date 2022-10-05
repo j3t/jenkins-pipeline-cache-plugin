@@ -1,6 +1,5 @@
 package io.jenkins.plugins.pipeline.cache;
 
-import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
@@ -15,7 +14,7 @@ import hudson.Extension;
 import hudson.model.TaskListener;
 
 /**
- * Handles 'cache' step executions.<br><br>
+ * Handles 'fileCache' step executions.<br><br>
  * How it works?
  * <ol>
  *     <li>cache gets restored by the given key to the given path (if key exists or one of the restoreKeys matches)</li>
@@ -24,9 +23,8 @@ import hudson.model.TaskListener;
  * </ol>
  * Note: When a cache gets restored then a list of keys (key is the first one followed by the restoreKeys) is used to find a matching key
  * . See {@link io.jenkins.plugins.pipeline.cache.s3.CacheItemRepository#findRestoreKey(String, String...)} for more details.
- * @deprecated replaced by the fileCache step (see {@link FileCacheStep})
  */
-public class CacheStep extends Step implements Serializable {
+public class FileCacheStep extends Step implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -54,19 +52,13 @@ public class CacheStep extends Step implements Serializable {
     private String filter;
 
     @DataBoundConstructor
-    public CacheStep(String path, String key) {
+    public FileCacheStep(String path, String key) {
         this.path = path;
         this.key = key;
     }
 
     @Override
     public FileCacheStepExecution start(StepContext context) throws Exception {
-        PrintStream logger = context.get(TaskListener.class).getLogger();
-        logger.println("!!!!!! Warning !!!!!!");
-        logger.println("The cache step is deprecated and will be removed in later releases!");
-        logger.println("Please migrate your pipeline to the fileCache step (replace cache with fileCache).");
-        logger.println("See https://github.com/j3t/jenkins-pipeline-cache-plugin/issues/20 for more details.");
-
         return new FileCacheStepExecution(context, path, key, restoreKeys, filter);
     }
 
@@ -74,7 +66,7 @@ public class CacheStep extends Step implements Serializable {
     public static final class DescriptorImpl extends StepDescriptor {
         @Override
         public String getFunctionName() {
-            return "cache";
+            return "fileCache";
         }
 
         @Override

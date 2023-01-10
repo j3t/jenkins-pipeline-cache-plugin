@@ -26,8 +26,8 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 
 public class CacheItemRepository {
 
-    static final String LAST_ACCESS = "LAST_ACCESS";
-    static final String CREATION = "CREATION";
+    static final String LAST_ACCESS = "last_access";
+    static final String CREATION = "creation";
 
     private final AmazonS3 s3;
     private final String bucket;

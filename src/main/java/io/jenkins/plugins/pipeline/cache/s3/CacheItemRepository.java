@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -95,11 +96,15 @@ public class CacheItemRepository {
      * timestamp, which means that last modification and last access can be considered as equals</b>
      */
     public void updateLastAccess(String key) {
-        ObjectMetadata metadata = s3.getObjectMetadata(bucket, key);
-        metadata.addUserMetadata(LAST_ACCESS, Long.toString(System.currentTimeMillis()));
+        final Map<String, String> origMetadata = s3.getObjectMetadata(bucket, key).getUserMetadata();
+        ObjectMetadata newMetadata = new ObjectMetadata();
 
-        // HACK: the only way to change the metadata of an existing object is to create a copy to itself
-        s3.copyObject(new CopyObjectRequest(bucket, key, bucket, key).withNewObjectMetadata(metadata));
+        newMetadata.addUserMetadata(CREATION, origMetadata.get(CREATION));
+        newMetadata.addUserMetadata(LAST_ACCESS, Long.toString(System.currentTimeMillis()));
+
+        // HACK: the only way to change the metadata of an existing object is to create
+        // a copy to itself
+        s3.copyObject(new CopyObjectRequest(bucket, key, bucket, key).withNewObjectMetadata(newMetadata));
     }
 
     /**

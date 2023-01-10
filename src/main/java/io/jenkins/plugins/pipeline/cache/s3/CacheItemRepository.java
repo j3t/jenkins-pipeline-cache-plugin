@@ -95,7 +95,9 @@ public class CacheItemRepository {
      * timestamp, which means that last modification and last access can be considered as equals</b>
      */
     public void updateLastAccess(String key) {
-        ObjectMetadata metadata = s3.getObjectMetadata(bucket, key);
+        // workaround for GCS: create a new metadata object and don't reuse the existing one
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setUserMetadata(s3.getObjectMetadata(bucket, key).getUserMetadata());
         metadata.addUserMetadata(LAST_ACCESS, Long.toString(System.currentTimeMillis()));
 
         // HACK: the only way to change the metadata of an existing object is to create a copy to itself

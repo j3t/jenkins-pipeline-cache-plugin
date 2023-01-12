@@ -18,19 +18,20 @@ import io.jenkins.plugins.pipeline.cache.CacheConfiguration;
  */
 public class BackupCallable extends AbstractMasterToAgentS3Callable {
     private final String key;
-    private final String filter;
-    private final boolean defaultExcludes;
+    private final String includes;
+    private final String excludes;
 
     /**
      * @param config S3 instance and bucket name
      * @param key the key used for this backup
-     * @param filter Ant file pattern mask, like <b>**&#47;*.java</b> which is applied to the path.
+     * @param includes Ant-Style pattern to include files (if null then <b>**&#47;*.java</b> is used instead).
+     * @param excludes Ant-Style pattern to exclude files (if null then no files are excluded).
      */
-    public BackupCallable(CacheConfiguration config, String key, String filter) {
+    public BackupCallable(CacheConfiguration config, String key, String includes, String excludes) {
         super(config);
         this.key = key;
-        this.filter = filter == null ? "**/*" : filter;
-        this.defaultExcludes = filter == null;
+        this.includes = includes == null ? "**/*" : includes;
+        this.excludes = excludes;
     }
 
     @Override
@@ -61,7 +62,7 @@ public class BackupCallable extends AbstractMasterToAgentS3Callable {
         FilePath tmp = new FilePath(File.createTempFile(String.format("cache-item-%s-%d", key, start), null));
         try (OutputStream outToTmp = tmp.write()) {
             // create tar archive locally
-            new FilePath(path).tar(outToTmp, new DirScanner.Glob(filter, null, defaultExcludes));
+            new FilePath(path).tar(outToTmp, new DirScanner.Glob(includes, excludes, false));
             // create checksum
             byte[] md5 = DigestUtils.md5(tmp.read());
             // upload it to S3

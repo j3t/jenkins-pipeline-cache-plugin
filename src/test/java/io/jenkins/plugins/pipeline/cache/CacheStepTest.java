@@ -352,11 +352,11 @@ public class CacheStepTest {
     }
 
     @Test
-    public void testFilter() throws Exception {
+    public void testIncludes() throws Exception {
         // GIVEN
         WorkflowJob p = createWorkflow("node {\n" +
                 "  sh 'mkdir a && touch a/file1.xml && touch a/file2.xml'\n" +
-                "  cache(path: 'a', filter: '**/file1.xml', key: 'a') {}\n" +
+                "  cache(path: 'a', includes: '**/file1.xml', key: 'a') {}\n" +
                 "  cache(path: 'b', key: 'a') {}\n" +
                 "  assert fileExists('b/file1.xml')\n" +
                 "  assert !fileExists('b/file2.xml')\n" +
@@ -370,13 +370,14 @@ public class CacheStepTest {
     }
 
     @Test
-    public void testDefaultExcludes() throws Exception {
+    public void testExcludes() throws Exception {
         // GIVEN
         WorkflowJob p = createWorkflow("node {\n" +
-                "  sh 'mkdir -p a/.git && touch a/.git/config'\n" +
-                "  cache(path: 'a', key: 'a') {}\n" +
+                "  sh 'mkdir a && touch a/file1.xml && touch a/file2.xml'\n" +
+                "  cache(path: 'a', excludes: '**/file1.xml', key: 'a') {}\n" +
                 "  cache(path: 'b', key: 'a') {}\n" +
-                "  assert !fileExists('b/.git/config')\n" +
+                "  assert !fileExists('b/file1.xml')\n" +
+                "  assert fileExists('b/file2.xml')\n" +
                 "}");
 
         // WHEN
@@ -387,13 +388,53 @@ public class CacheStepTest {
     }
 
     @Test
-    public void testDefaultExcludesIgnoredWhenFilterIsActive() throws Exception {
+    public void testIncludesAndExcludes() throws Exception {
         // GIVEN
         WorkflowJob p = createWorkflow("node {\n" +
-                "  sh 'mkdir -p a/.git && touch a/.git/config'\n" +
-                "  cache(path: 'a', key: 'a', filter: '**/*') {}\n" +
+                "  sh 'mkdir a && touch a/file.xml && touch a/file.html && touch a/another-file.xml'\n" +
+                "  cache(path: 'a', includes: '**/file.*', excludes: '**/*.html', key: 'a') {}\n" +
                 "  cache(path: 'b', key: 'a') {}\n" +
-                "  assert fileExists('b/.git/config')\n" +
+                "  assert fileExists('b/file.xml')\n" +
+                "  assert !fileExists('b/file.html')\n" +
+                "  assert !fileExists('b/another-file.xml')\n" +
+                "}");
+
+        // WHEN
+        WorkflowRun b = executeWorkflow(p);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+    }
+
+    @Test
+    public void testIncludesList() throws Exception {
+        // GIVEN
+        WorkflowJob p = createWorkflow("node {\n" +
+                "  sh 'mkdir a && touch a/file.xml && touch a/file.html && touch a/file.json'\n" +
+                "  cache(path: 'a', key: 'a', includes: '**/*.xml,**/*.html') {}\n" +
+                "  cache(path: 'b', key: 'a') {}\n" +
+                "  assert fileExists('b/file.xml')\n" +
+                "  assert fileExists('b/file.html')\n" +
+                "  assert !fileExists('b/file.json')\n" +
+                "}");
+
+        // WHEN
+        WorkflowRun b = executeWorkflow(p);
+
+        // THEN
+        j.assertBuildStatusSuccess(b);
+    }
+
+    @Test
+    public void testExcludesList() throws Exception {
+        // GIVEN
+        WorkflowJob p = createWorkflow("node {\n" +
+                "  sh 'mkdir a && touch a/file.xml && touch a/file.html && touch a/file.json'\n" +
+                "  cache(path: 'a', key: 'a', excludes: '**/*.xml,**/*.html') {}\n" +
+                "  cache(path: 'b', key: 'a') {}\n" +
+                "  assert !fileExists('b/file.xml')\n" +
+                "  assert !fileExists('b/file.html')\n" +
+                "  assert fileExists('b/file.json')\n" +
                 "}");
 
         // WHEN

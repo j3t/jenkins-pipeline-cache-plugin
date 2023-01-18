@@ -53,10 +53,16 @@ public class CacheStep extends Step implements Serializable {
     private String[] restoreKeys;
 
     /**
-     * (optional) Glob pattern to filter the path (e.g. <i>**&#47;*.java</i> includes java files only).
+     * (optional) Glob pattern to filter the path (default: <i>**&#47;*</i> includes all files).
      */
     @DataBoundSetter
-    private String filter;
+    private String includes;
+
+    /**
+     * (optional) Glob pattern to filter the path (default: <i>null</i> excludes no files).
+     */
+    @DataBoundSetter
+    private String excludes;
 
     @DataBoundConstructor
     public CacheStep(String path, String key) {
@@ -115,7 +121,7 @@ public class CacheStep extends Step implements Serializable {
                 @Override
                 public void onSuccess(StepContext context, Object result) {
                     try {
-                        path.act(new BackupCallable(config, step.key, step.filter)).printInfos(logger);
+                        path.act(new BackupCallable(config, step.key, step.includes, step.excludes)).printInfos(logger);
                     } catch (Exception x) {
                         context.onFailure(x);
                         return;

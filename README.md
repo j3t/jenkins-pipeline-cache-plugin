@@ -11,7 +11,7 @@ The primary goal is to have a file cache for so called `hot agent nodes`. Those 
 
 For automated installations via `plugin.txt` you can use an entry like below:
 ```
-jenkins-pipeline-cache::https://github.com/j3t/jenkins-pipeline-cache-plugin/releases/download/0.1.6/jenkins-pipeline-cache-0.1.6.hpi
+jenkins-pipeline-cache::https://github.com/j3t/jenkins-pipeline-cache-plugin/releases/download/0.2.0/jenkins-pipeline-cache-0.2.0.hpi
 ```
 
 # Configuration

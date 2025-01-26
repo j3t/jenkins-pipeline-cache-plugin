@@ -28,6 +28,7 @@ public class CacheItemRepository {
 
     static final String LAST_ACCESS = "LAST_ACCESS";
     static final String CREATION = "CREATION";
+    private static final long TIME_THRESHOLD = 5 * 60 * 1000L; // 5 minutes
 
     private final AmazonS3 s3;
     private final String bucket;
@@ -95,13 +96,19 @@ public class CacheItemRepository {
      * timestamp, which means that last modification and last access can be considered as equals</b>
      */
     public void updateLastAccess(String key) {
-        // workaround for GCS: create a new metadata object and don't reuse the existing one
-        ObjectMetadata metadata = new ObjectMetadata();
-        metadata.setUserMetadata(s3.getObjectMetadata(bucket, key).getUserMetadata());
-        metadata.addUserMetadata(LAST_ACCESS, Long.toString(System.currentTimeMillis()));
+        ObjectMetadata metadata = s3.getObjectMetadata(bucket, key);
+        long lastAccessTime = Long.parseLong(metadata.getUserMetadata().getOrDefault(LAST_ACCESS, "0"));
+        long currentTime = System.currentTimeMillis();
 
-        // HACK: the only way to change the metadata of an existing object is to create a copy to itself
-        s3.copyObject(new CopyObjectRequest(bucket, key, bucket, key).withNewObjectMetadata(metadata));
+        if (currentTime - lastAccessTime > TIME_THRESHOLD) {
+            // workaround for GCS: create a new metadata object and don't reuse the existing one
+            ObjectMetadata newMetadata = new ObjectMetadata();
+            newMetadata.setUserMetadata(metadata.getUserMetadata());
+            newMetadata.addUserMetadata(LAST_ACCESS, Long.toString(currentTime));
+
+            // HACK: the only way to change the metadata of an existing object is to create a copy to itself
+            s3.copyObject(new CopyObjectRequest(bucket, key, bucket, key).withNewObjectMetadata(newMetadata));
+        }
     }
 
     /**

@@ -21,7 +21,7 @@
 
         <!-- dependency versions -->
         <jenkins.version>2.504.1</jenkins.version>
-        <aws-java-sdk2.version>2.33.4-62.vc1a_8df64b_4c9</aws-java-sdk2.version>
+        <aws-java-sdk2.version>2.42.33-70.vd69c0763fa_60</aws-java-sdk2.version>
     </properties>
 
     <name>Jenkins Pipeline Cache</name>

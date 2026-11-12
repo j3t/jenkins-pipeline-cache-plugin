@@ -239,7 +239,7 @@ public class CacheConfiguration extends GlobalConfiguration implements Serializa
      * to the local credential chain.
      */
     private static ResolvedCredentials resolveDefaultChain() {
-        try (DefaultCredentialsProvider provider = DefaultCredentialsProvider.create()) {
+        try (DefaultCredentialsProvider provider = DefaultCredentialsProvider.builder().build()) {
             return toResolvedCredentials(provider.resolveCredentials());
         }
     }
